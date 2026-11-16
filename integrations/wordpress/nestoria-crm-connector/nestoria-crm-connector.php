@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Khushii CRM Connector for Nestoria
  * Description: Queues Nestoria Property Projects enquiries for signed delivery to Khushii CRM.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -121,29 +121,10 @@ function khushii_npp_deliver( $lead_id ) {
     if ( $lock && $lock < time() - 900 ) { delete_post_meta( $lead_id, '_khushii_crm_lock', (string) $lock ); }
     if ( ! add_post_meta( $lead_id, '_khushii_crm_lock', (string) time(), true ) ) { return; }
     try {
-        $name = (string) get_post_meta( $lead_id, '_npp_lead_name', true );
-        $phone = khushii_npp_phone( get_post_meta( $lead_id, '_npp_lead_phone', true ) );
-        $email = (string) get_post_meta( $lead_id, '_npp_lead_email', true );
-        if ( 'Not provided' === $email ) { $email = ''; }
-        if ( strlen( $name ) < 2 || ! $phone || ( $email && ! is_email( $email ) ) ) {
-            update_post_meta( $lead_id, '_khushii_crm_status', 'needs_review' );
-            update_post_meta($lead_id,'_khushii_crm_error','Check the saved name, phone number and email in WordPress.');
-            return;
-        }
-        $fields = array( 'Project' => 'project', 'Plot size' => 'plotsize', 'Budget' => 'budget', 'Preferred visit' => 'preferredsitevisit', 'Message' => 'message' );
-        $parts = array();
-        foreach ( $fields as $label => $key ) {
-            $value = trim( (string) get_post_meta( $lead_id, '_npp_lead_' . $key, true ) );
-            if ( '' !== $value ) { $parts[] = $label . ': ' . $value; }
-        }
-        $source_url = (string) get_post_meta( $lead_id, '_npp_lead_source_url', true );
-        if ( $source_url ) { $parts[] = 'Source page: ' . esc_url_raw( $source_url ); }
-        $message = wp_html_excerpt( implode( "\n", $parts ), 3000, '' );
-        $project_id = absint( get_post_meta( $lead_id, '_npp_lead_project_id', true ) );
-        $slug = $project_id && 'npp_project' === get_post_type( $project_id ) ? (string) get_post_field( 'post_name', $project_id ) : '';
-        $submission_id = 'nestoria:' . substr( hash( 'sha256', home_url( '/' ) ), 0, 24 ) . ':' . $lead_id;
+        $payload=khushii_npp_export_payload($lead_id);
+        if(is_wp_error($payload)){update_post_meta($lead_id,'_khushii_crm_status','needs_review');update_post_meta($lead_id,'_khushii_crm_error','Check name, phone and email.');return;}
         update_post_meta($lead_id,'_khushii_crm_last_attempt',gmdate('c'));
-        $result = khushii_crm_send_website_lead( $submission_id, $name, $phone, $email, $message, $slug );
+        $result = khushii_crm_send_website_lead( $payload['externalSubmissionId'], $payload['name'], $payload['phone'], $payload['email']??'', $payload['message'], $payload['projectSlug']??'' );
         if ( ! is_wp_error( $result ) ) {
             update_post_meta( $lead_id, '_khushii_crm_status', 'sent' );
             update_post_meta( $lead_id, '_khushii_crm_lead_id', sanitize_text_field( $result['id'] ) );
@@ -278,3 +259,49 @@ function khushii_npp_send_next() {
     wp_safe_redirect(add_query_arg(array('post_type'=>'npp_project','page'=>'khushii-npp-connector'),admin_url('edit.php')));exit;
 }
 add_action('admin_post_khushii_npp_send_next','khushii_npp_send_next');
+
+
+function khushii_npp_export_payload($lead_id) {
+    $name=(string)get_post_meta($lead_id,'_npp_lead_name',true);
+    $phone=khushii_npp_phone(get_post_meta($lead_id,'_npp_lead_phone',true));
+    $email=(string)get_post_meta($lead_id,'_npp_lead_email',true);if('Not provided'===$email)$email='';
+    if(strlen($name)<2||!$phone||($email&&!is_email($email)))return new WP_Error('invalid_contact','Check name, phone and email.');
+        $fields = array( 'Project' => 'project', 'Plot size' => 'plotsize', 'Budget' => 'budget', 'Preferred visit' => 'preferredsitevisit', 'Message' => 'message' );
+        $parts = array();
+        foreach ( $fields as $label => $key ) {
+            $value = trim( (string) get_post_meta( $lead_id, '_npp_lead_' . $key, true ) );
+            if ( '' !== $value ) { $parts[] = $label . ': ' . $value; }
+        }
+        $source_url = (string) get_post_meta( $lead_id, '_npp_lead_source_url', true );
+        if ( $source_url ) { $parts[] = 'Source page: ' . esc_url_raw( $source_url ); }
+        $message = wp_html_excerpt( implode( "\n", $parts ), 3000, '' );
+        $project_id = absint( get_post_meta( $lead_id, '_npp_lead_project_id', true ) );
+        $slug = $project_id && 'npp_project' === get_post_type( $project_id ) ? (string) get_post_field( 'post_name', $project_id ) : '';
+        $submission_id = 'nestoria:' . substr( hash( 'sha256', home_url( '/' ) ), 0, 24 ) . ':' . $lead_id;
+
+    $payload=array('externalSubmissionId'=>$submission_id,'name'=>$name,'phone'=>$phone,'source'=>'website','message'=>$message);
+    if($email)$payload['email']=$email;if($slug)$payload['projectSlug']=$slug;
+    return $payload;
+}
+
+/** Authenticated read-only export; private enquiries never become a public REST resource. */
+function khushii_npp_export_permission($request) {
+    $secret=khushii_npp_setting('secret');
+    if(strlen($secret)<24)return new WP_Error('crm_configuration','Configure the matching integration secret in WordPress.',array('status'=>503));
+    $stamp=(string)$request->get_header('x-crm-timestamp');$signature=(string)$request->get_header('x-crm-signature');
+    if(!preg_match('/^[0-9]{10}$/',$stamp)||abs(time()-(int)$stamp)>300||!preg_match('/^sha256=[a-f0-9]{64}$/',$signature))return new WP_Error('crm_auth','Invalid signature or expired timestamp.',array('status'=>401));
+    $after=(int)$request->get_param('after');
+    $canonical="GET\n/khushii-crm/v1/enquiries?after=".$after.'&limit=50';
+    $expected='sha256='.hash_hmac('sha256',$stamp.'.'.$canonical,$secret);
+    return hash_equals($expected,$signature)?true:new WP_Error('crm_auth','Invalid signature.',array('status'=>401));
+}
+function khushii_npp_export_enquiries($request) {
+    global $wpdb;
+    $after=(int)$request->get_param('after');
+    $ids=$wpdb->get_col($wpdb->prepare("SELECT ID FROM {$wpdb->posts} WHERE post_type = %s AND post_status = %s AND ID > %d ORDER BY ID ASC LIMIT 50",'npp_lead','private',$after));
+    if(!is_array($ids))return new WP_Error('crm_database','Cannot read enquiries.',array('status'=>500));
+    $items=array();$rejected=array();$next=$after;
+    foreach($ids as $id){$next=(int)$id;$payload=khushii_npp_export_payload($id);if(is_wp_error($payload))$rejected[]=array('wordpressId'=>(int)$id,'reason'=>'Invalid name, phone or email');else $items[]=$payload;}
+    return array('items'=>$items,'rejected'=>$rejected,'nextAfter'=>$next,'hasMore'=>count($ids)===50);
+}
+add_action('rest_api_init',function(){register_rest_route('khushii-crm/v1','/enquiries',array('methods'=>'GET','permission_callback'=>'khushii_npp_export_permission','callback'=>'khushii_npp_export_enquiries','args'=>array('after'=>array('default'=>0,'validate_callback'=>function($v){return is_scalar($v)&&preg_match('/^[0-9]{1,12}$/',(string)$v);}))));});

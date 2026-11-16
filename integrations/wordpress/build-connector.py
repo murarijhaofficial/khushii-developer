@@ -4,7 +4,7 @@ from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 root = Path(__file__).resolve().parent
 source = root / 'nestoria-crm-connector'
-output = root / 'nestoria-crm-connector-0.3.0.zip'
+output = root / 'nestoria-crm-connector-0.4.0.zip'
 entries = ['nestoria-crm-connector.php', 'README.md']
 with ZipFile(output, 'w', compression=ZIP_DEFLATED) as archive:
     directory = ZipInfo('nestoria-crm-connector/')

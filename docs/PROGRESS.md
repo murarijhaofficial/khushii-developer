@@ -38,3 +38,5 @@
 - Live diagnosis: Render health, admin login, session and logout return HTTP 200; the supplied Vercel origin is absent from Render CORS responses. Normalize configured origin trailing slashes and test exact allowlist matching. Live dashboard CORS_ORIGIN still needs updating to the supplied Vercel origin.
 
 - Nestoria 0.3.0: immediate new-enquiry attempt with retry fallback, safe delivery diagnostics and manual pending-record send. Added authorized CRM receipt count/last-arrival endpoint and UI; live WordPress installation remains required.
+
+- Confirmed zero real website arrivals (only 40 demo records). Added direct signed WordPress import with cursor pagination, deduplication and admin controls; optional CRM forms moved below the existing-website integration. Connector 0.4.0 must be installed for the new export route.

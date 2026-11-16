@@ -15,3 +15,5 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         sync: false
+      - key: WORDPRESS_SITE_URL
+        value: https://khushiideveloper.com

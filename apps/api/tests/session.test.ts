@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { spawn } from 'node:child_process';
+import {createServer} from 'node:http';
+import type {AddressInfo} from 'node:net';
 import { createHmac, randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -15,7 +17,17 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
   const db = new PrismaClient();
   let formId = '';
   const externalId = `nestoria:integration-test-${randomUUID()}`;
-  const server = spawn(process.execPath, ['dist/server.js'], { env: { ...process.env, PORT: String(port), NODE_ENV: 'test', WEBHOOK_SHARED_SECRET: secret, CORS_ORIGIN: 'https://crm.example.test/' }, stdio: 'ignore' });
+  const website=createServer((req,res)=>{
+    const url=new URL(req.url!,'http://localhost');const after=Number(url.searchParams.get('after'));
+    const timestamp=String(req.headers['x-crm-timestamp']||'');const canonical=`GET\n/khushii-crm/v1/enquiries?after=${after}&limit=50`;
+    const signature='sha256='+createHmac('sha256',secret).update(timestamp+'.'+canonical).digest('hex');
+    res.setHeader('Content-Type','application/json');
+    if(req.headers['x-crm-signature']!==signature||after===999){res.writeHead(401);res.end('{}');return;}
+    res.end(JSON.stringify({items:[{externalSubmissionId:after===0?externalId:externalId+':pulled',name:'Pulled Example',phone:'+919000000004',source:'website',message:'Imported from WordPress'}],rejected:after===0?[{wordpressId:10,reason:'Invalid phone'}]:[],nextAfter:after===0?42:43,hasMore:after===0}));
+  });
+  await new Promise<void>(resolve=>website.listen(0,'127.0.0.1',resolve));
+  const websiteUrl=`http://127.0.0.1:${(website.address() as AddressInfo).port}`;
+  const server = spawn(process.execPath, ['dist/server.js'], { env: { ...process.env, PORT: String(port), NODE_ENV: 'test', WEBHOOK_SHARED_SECRET: secret, CORS_ORIGIN: 'https://crm.example.test/', WORDPRESS_SITE_URL: websiteUrl }, stdio: 'ignore' });
   const base = `http://127.0.0.1:${port}/api/v1`;
   try {
     let ready = false;
@@ -77,6 +89,16 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     assert.equal(listed.status,200);
     const listedLeads = await listed.json() as Array<{id:string;message:string|null}>;
     assert.ok(listedLeads.find(lead=>lead.id===imported?.id)?.message?.includes('Budget: Example budget'));
+    assert.equal((await fetch(base+'/integrations/nestoria/sync',{method:'POST',headers:{'content-type':'application/json'},body:'{}'})).status,401);
+    const syncHeaders={cookie,'x-csrf-token':csrfToken,'content-type':'application/json'};
+    const firstSync=await fetch(base+'/integrations/nestoria/sync',{method:'POST',headers:syncHeaders,body:JSON.stringify({after:0})});
+    assert.equal(firstSync.status,200);const firstBatch=await firstSync.json() as {created:number;existing:number;hasMore:boolean;rejected:unknown[]};
+    assert.equal(firstBatch.created,0);assert.equal(firstBatch.existing,1);assert.equal(firstBatch.hasMore,true);assert.equal(firstBatch.rejected.length,1);
+    const secondSync=await fetch(base+'/integrations/nestoria/sync',{method:'POST',headers:syncHeaders,body:JSON.stringify({after:42})});
+    assert.equal(secondSync.status,200);assert.equal((await secondSync.json() as {created:number}).created,1);
+    const replay=await fetch(base+'/integrations/nestoria/sync',{method:'POST',headers:syncHeaders,body:JSON.stringify({after:42})});
+    assert.equal((await replay.json() as {existing:number}).existing,1);
+    assert.equal((await fetch(base+'/integrations/nestoria/sync',{method:'POST',headers:syncHeaders,body:JSON.stringify({after:999})})).status,502);
     const rejected = await fetch(base + '/auth/logout', { method: 'POST', headers: { cookie } });
     assert.equal(rejected.status, 403);
     const logout = await fetch(base + '/auth/logout', { method: 'POST', headers: { cookie, 'x-csrf-token': csrfToken } });
@@ -85,7 +107,8 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
   } finally {
     server.kill();
     if(formId){await db.lead.deleteMany({where:{websiteFormId:formId}});await db.websiteForm.deleteMany({where:{id:formId}})}
-    await db.lead.deleteMany({where:{externalId:`website:${externalId}`}});
+    await db.lead.deleteMany({where:{externalId:{in:[`website:${externalId}`,`website:${externalId}:pulled`]}}});
+    website.closeAllConnections();await new Promise<void>(resolve=>website.close(()=>resolve()));
     await db.$disconnect();
   }
 });

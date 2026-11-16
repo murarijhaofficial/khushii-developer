@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canAccessLead, leadEditors, leadManagers } from './permissions.js';
 import { parseCorsOrigins } from './cors-config.js';
+import {fetchNestoriaBatch,WebsiteSyncError} from './nestoria-sync.js';
 
 const db = new PrismaClient();
 const app = express();
@@ -102,7 +103,17 @@ app.post('/api/v1/campaigns',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN,Role.M
  if(!input.success)return res.status(400).json({error:input.error.flatten()});
  res.status(201).json(await db.campaign.create({data:input.data}));
 });
-app.get('/api/v1/integrations/website-status',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{const where={externalId:{startsWith:'website:nestoria:'}};const [total,last]=await Promise.all([db.lead.count({where}),db.lead.findFirst({where,orderBy:{createdAt:'desc'},select:{createdAt:true}})]);res.json({total,lastReceivedAt:last?.createdAt??null})}catch(e){next(e)}});
+app.get('/api/v1/integrations/website-status',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{const where={externalId:{startsWith:'website:nestoria:'}};const [total,last]=await Promise.all([db.lead.count({where}),db.lead.findFirst({where,orderBy:{createdAt:'desc'},select:{createdAt:true}})]);res.json({total,lastReceivedAt:last?.createdAt??null,websiteUrl:process.env.WORDPRESS_SITE_URL||'https://khushiideveloper.com'})}catch(e){next(e)}});
+app.post('/api/v1/integrations/nestoria/sync',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(req,res,next)=>{try{
+ const input=z.object({after:z.number().int().min(0).max(999999999999).default(0)}).strict().safeParse(req.body);
+ if(!input.success)return res.status(400).json({error:'Invalid sync cursor'});
+ const batch=await fetchNestoriaBatch(process.env.WORDPRESS_SITE_URL||'https://khushiideveloper.com',input.data.after,integrationSecret!,process.env.NODE_ENV==='test');
+ const slugs=[...new Set(batch.items.flatMap(item=>item.projectSlug?[item.projectSlug]:[]))];
+ const projects=await db.project.findMany({where:{slug:{in:slugs}},select:{id:true,slug:true}});
+ const projectIds=new Map(projects.map(p=>[p.slug,p.id]));
+ const inserted=await db.lead.createMany({skipDuplicates:true,data:batch.items.map(item=>({name:item.name,phone:item.phone,email:item.email,message:item.message,source:'website',externalId:'website:'+item.externalSubmissionId,projectId:item.projectSlug?projectIds.get(item.projectSlug):undefined}))});
+ res.json({created:inserted.count,existing:batch.items.length-inserted.count,rejected:batch.rejected,nextAfter:batch.nextAfter,hasMore:batch.hasMore});
+ }catch(e){if(e instanceof WebsiteSyncError)return res.status(502).json({error:e.message});next(e)}});
 const websiteFormInput=z.object({name:z.string().trim().min(2).max(100),projectId:z.string().uuid().nullable().optional()}).strict();
 app.get('/api/v1/website-forms',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{res.json(await db.websiteForm.findMany({orderBy:{createdAt:'desc'},include:{project:{select:{name:true}},_count:{select:{leads:true}}}}))}catch(e){next(e)}});
 app.post('/api/v1/website-forms',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(req,res,next)=>{try{const input=websiteFormInput.safeParse(req.body);if(!input.success)return res.status(400).json({error:'Please enter a valid form name and project'});if(input.data.projectId&&!await db.project.findUnique({where:{id:input.data.projectId}}))return res.status(400).json({error:'Project not found'});res.status(201).json(await db.websiteForm.create({data:input.data}))}catch(e){next(e)}});

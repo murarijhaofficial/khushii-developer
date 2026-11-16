@@ -95,3 +95,12 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Remaining: update WordPress plugin and redeploy API/frontend, configure matching key, verify real website submission and historical import.
 
 - Public API diagnostic: two signed deliveries returned HTTP 202 with the same lead ID; authenticated listing showed the lead; exactly that temporary diagnostic record was removed. Workspace build, API tests, PHP syntax and extracted plugin behavior tests passed.
+
+## Direct WordPress lead synchronization
+- Status: TESTED locally; website update and hosted redeployment pending.
+- Confirmed: Neon has 40 demo leads and no real website/form submissions. Public WordPress connector README identifies version 0.3.0. The separate form counter is not a count of saved WordPress enquiries.
+- Created: apps/api/src/nestoria-sync.ts. Modified: API routes, CRM integration UI, WordPress connector, deployment environment example, tests and docs.
+- API: admin/CSRF-protected POST /integrations/nestoria/sync; signed WordPress GET /khushii-crm/v1/enquiries. No database migration.
+- Behavior: imports private enquiries by ID cursor in pages of 50; createMany skipDuplicates preserves assignments/statuses; invalid contacts and connection errors are reported; arbitrary client-supplied website URLs are not accepted. Push/pull share the same external IDs.
+- Verification: build and type checks, local signed mock-WordPress integration tests covering multiple pages, repeat import, unauthorized access and remote auth failure; PHP authentication/export/field mapping and packaged connector behavior tests.
+- Remaining: install connector 0.4.0 on actual WordPress and deploy CRM changes; verify actual historical imports. No claim that live WordPress data has been imported.

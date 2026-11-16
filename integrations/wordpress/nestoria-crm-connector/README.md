@@ -1,6 +1,6 @@
-# Nestoria CRM Connector 0.3.0
+# Nestoria CRM Connector 0.4.0
 
-Install the self-contained `nestoria-crm-connector-0.3.0.zip` alongside Nestoria Property Projects. Replace the previous Khushii connector when prompted. Keep the original Nestoria Property Projects active.
+Install the self-contained `nestoria-crm-connector-0.4.0.zip` alongside Nestoria Property Projects. Replace the previous Khushii connector when prompted. Keep the original Nestoria Property Projects active.
 
 Open **Settings > Nestoria CRM Connector** (also under **Property Projects > CRM Connector**):
 1. Enter the publicly reachable HTTPS CRM API URL ending in `/api/v1`.
@@ -18,7 +18,14 @@ The connector maps name, phone, email, project, plot size, budget, visit date, m
 
 Tested with PHP syntax checks, WordPress behavior stubs (including 123 saved enquiries, connection settings controls, secret encryption, signatures and retries), and local CRM API integration tests. Real WordPress activation and delivery require verification on the actual website.
 
-## Delivery fixes in 0.3.0
+## Delivery fixes in 0.4.0
 New enquiries attempt signed delivery during WordPress shutdown instead of waiting exclusively for Cron. Failed attempts retain the retry queue; historical import and retries still need WP-Cron. A Send next queued enquiry now button lets an administrator process a pending record directly for diagnosis. The CRM sync column reports safe HTTP/network error details and records the last attempt time without logging the secret or contact data. The default API address is `https://khushii-developer.onrender.com/api/v1`; the saved key must match Render WEBHOOK_SHARED_SECRET. CORS does not restrict server-to-server WordPress delivery.
 
 After updating the connector, Save connection, Test CRM connection, Import all saved enquiries, then use Send next queued enquiry now to verify one historical record. Check its Sent state in WordPress and the received-count/last-arrival indicator in CRM Integrations. Deploy the updated API and frontend to enable that indicator. If a record is Sent but not visible to a sales executive, an administrator must assign it first; new website leads begin unassigned. No real website delivery is claimed until the actual site has been verified.
+
+## Direct sync from the CRM (0.4.0)
+After replacing the connector on WordPress, save the same integration secret as Render. In CRM Integrations click Sync WordPress leads. The API reads all saved private Nestoria enquiries in batches of 50 via a signed GET request to `/wp-json/khushii-crm/v1/enquiries`. This does not require WP-Cron. Records already imported by automatic delivery are skipped by external submission ID; existing assignments and statuses are preserved. Invalid contacts are counted for review instead of silently claiming they were imported. The optional embedded CRM form has its own submission count and is not needed for existing Nestoria forms.
+
+Deploy the matching API/frontend changes and set Render `WORDPRESS_SITE_URL=https://khushiideveloper.com` (also the code default). The website URL is configured only on the server; operators cannot use the sync endpoint to request arbitrary URLs. The website's REST route rejects unsigned requests and signatures older than five minutes; no private enquiries are exposed publicly.
+
+If the CRM reports HTTP 404, update this connector and check WordPress permalinks/firewall settings. HTTP 401 means the signing secret or server clock differs. Exported enquiries are read-only on WordPress: this import does not change their WordPress push-delivery status. Inspect CRM import counts for the direct-sync result.

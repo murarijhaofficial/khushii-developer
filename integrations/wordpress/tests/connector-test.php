@@ -86,4 +86,22 @@ ob_start(); khushii_npp_admin_page(); $screen=ob_get_clean();
 check(strpos($screen,'name="api_url"')!==false && strpos($screen,'name="api_secret"')!==false,'connection input controls rendered');
 check(strpos($screen,'Save connection')!==false && strpos($screen,'Test CRM connection')!==false && strpos($screen,'Import all saved enquiries')!==false,'connection and import actions present');
 check(strpos($screen,KHUSHII_CRM_WEBHOOK_SECRET)===false,'saved secret never rendered');
+class ExportRequest {
+ public $headers; public $after;
+ public function __construct($headers,$after){$this->headers=$headers;$this->after=$after;}
+ public function get_header($name){return $this->headers[$name]??'';}
+ public function get_param($name){return $name==='after'?$this->after:null;}
+}
+$stamp=(string)time();$canonical="GET\n/khushii-crm/v1/enquiries?after=0&limit=50";
+$headers=array('x-crm-timestamp'=>$stamp,'x-crm-signature'=>'sha256='.hash_hmac('sha256',$stamp.'.'.$canonical,KHUSHII_CRM_WEBHOOK_SECRET));
+$request=new ExportRequest($headers,0);
+check(khushii_npp_export_permission($request)===true,'signed pull request authorized');
+check(is_wp_error(khushii_npp_export_permission(new ExportRequest(array(),0))),'unsigned pull rejected');
+$wrong=$headers;$wrong['x-crm-signature']='sha256='.str_repeat('0',64);
+check(is_wp_error(khushii_npp_export_permission(new ExportRequest($wrong,0))),'wrong secret rejected');
+foreach(range(1000,1122) as $id){$GLOBALS['meta'][$id]=$GLOBALS['meta'][42];}
+$export=khushii_npp_export_enquiries($request);
+check(count($export['items'])===50 && $export['hasMore'] && $export['nextAfter']===1049,'private lead export is bounded and advances cursor');
+$again=khushii_npp_export_payload(42);
+check($again['externalSubmissionId']===$payload['externalSubmissionId'],'push and pull share the same duplicate prevention key');
 echo "Nestoria connector behavior tests passed (including import of 123 enquiries and secret encryption)\n";
