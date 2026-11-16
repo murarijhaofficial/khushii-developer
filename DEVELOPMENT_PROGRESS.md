@@ -113,3 +113,12 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Data/API changes: none. Existing collapsed WordPress notes are parsed on display; plain notes remain readable and source links permit HTTP/HTTPS only.
 - Verification: parser/security regression tests and production build. No new API authorization or database migration required.
 - Remaining: deploy frontend changes to Vercel and verify the layout in the hosted browser.
+
+## Khushii Enquiry Pro compatibility
+- Status: TESTED locally and with packaged WordPress behavior stubs; live installation unverified.
+- Inspected: supplied khushii-enquiry-pro archive, version 2.3.0. Private `khep_enquiry` records and `_khep_*` fields confirmed; built-in CRM API is EspoCRM-specific.
+- Modified: shared connector 0.5.0, sync payload validation and receipt counts, lead source/interest UI, tests and docs. Original uploaded plugin archive unchanged.
+- Behavior: signed push after complete metadata save, paginated import of both post types, separate idempotency namespaces, retention of full 3000-character message plus context. Contact consent is not marketing consent. Existing namespace/status/assignment preservation remains intact.
+- Schema changes: none. Lead note request limit increased to 6000 (database String already supports it).
+- Tests: Enquiry Pro field/consent mapping, automatic delivery, shared push/pull IDs, mixed-source API imports and retries, interest formatting, PHP syntax, package extraction, TypeScript and production build.
+- Remaining: deploy API/frontend and upgrade shared connector in WordPress, then verify actual form submission and historical imports.

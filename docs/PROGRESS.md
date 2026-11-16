@@ -42,3 +42,5 @@
 - Confirmed zero real website arrivals (only 40 demo records). Added direct signed WordPress import with cursor pagination, deduplication and admin controls; optional CRM forms moved below the existing-website integration. Connector 0.4.0 must be installed for the new export route.
 
 - Improved lead display: compact contact rows with full-width enquiry detail panels, structured fields parsed from legacy/multiline notes, project-name fallback, readable dates/budgets and safe source links. Existing records do not need reimporting.
+
+- Added Khushii Enquiry Pro 2.3.0 support to shared connector 0.5.0: new-entry delivery, existing-record sync, separate external IDs, enquiry-interest display and full message preservation. Existing plugin remains intact; live verification pending installation/deployment.

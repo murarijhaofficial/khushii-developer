@@ -21,3 +21,9 @@ test('untrusted source URLs are never made executable links',()=>{
  assert.equal(safeSourceUrl('https://example.test/project'),'https://example.test/project');
  assert.equal(safeSourceUrl('https://user:secret@example.test/'),undefined);
 });
+
+test('Enquiry Pro displays interest separately without inventing a project',()=>{
+ const details=parseEnquiryDetails('Interest: General Enquiry\nMessage: Please call me\nContact consent: Yes (enquiry response only)');
+ assert.equal(details.interest,'General Enquiry');assert.equal(details.project,undefined);
+ assert.equal(details.message,'Please call me\nContact consent: Yes (enquiry response only)');
+});

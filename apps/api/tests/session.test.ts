@@ -23,7 +23,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     const signature='sha256='+createHmac('sha256',secret).update(timestamp+'.'+canonical).digest('hex');
     res.setHeader('Content-Type','application/json');
     if(req.headers['x-crm-signature']!==signature||after===999){res.writeHead(401);res.end('{}');return;}
-    res.end(JSON.stringify({items:[{externalSubmissionId:after===0?externalId:externalId+':pulled',name:'Pulled Example',phone:'+919000000004',source:'website',message:'Imported from WordPress'}],rejected:after===0?[{wordpressId:10,reason:'Invalid phone'}]:[],nextAfter:after===0?42:43,hasMore:after===0}));
+    res.end(JSON.stringify({items:[{externalSubmissionId:after===0?externalId:externalId.replace('nestoria:','khep:')+':pulled',name:'Pulled Example',phone:'+919000000004',source:'website',message:after===0?'Imported from WordPress':'Interest: General Enquiry\nMessage: '+ 'A'.repeat(3000)}],rejected:after===0?[{wordpressId:10,reason:'Invalid phone'}]:[],nextAfter:after===0?42:43,hasMore:after===0}));
   });
   await new Promise<void>(resolve=>website.listen(0,'127.0.0.1',resolve));
   const websiteUrl=`http://127.0.0.1:${(website.address() as AddressInfo).port}`;
@@ -107,7 +107,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
   } finally {
     server.kill();
     if(formId){await db.lead.deleteMany({where:{websiteFormId:formId}});await db.websiteForm.deleteMany({where:{id:formId}})}
-    await db.lead.deleteMany({where:{externalId:{in:[`website:${externalId}`,`website:${externalId}:pulled`]}}});
+    await db.lead.deleteMany({where:{externalId:{in:[`website:${externalId}`,`website:${externalId.replace('nestoria:','khep:')}:pulled`]}}});
     website.closeAllConnections();await new Promise<void>(resolve=>website.close(()=>resolve()));
     await db.$disconnect();
   }

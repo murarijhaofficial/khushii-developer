@@ -7,7 +7,7 @@ $GLOBALS['meta'] = array(); $GLOBALS['events'] = array(); $GLOBALS['requests'] =
 class WP_Error { public $code; public $data; public function __construct($code, $message = '', $data = null) { $this->code = $code; $this->data=$data; } public function get_error_data(){return $this->data;} }
 function add_action(...$args) {$GLOBALS['hooks'][$args[0]][]=$args[1];} function add_filter(...$args) {}
 function absint($v) { return abs((int)$v); }
-function get_post_type($id) { return 20 === (int)$id ? 'npp_project' : ((42 === (int)$id || ((int)$id>=1000 && (int)$id<=1122)) ? 'npp_lead' : ''); }
+function get_post_type($id) { if((int)$id===84)return 'khep_enquiry'; return 20 === (int)$id ? 'npp_project' : ((42 === (int)$id || ((int)$id>=1000 && (int)$id<=1122)) ? 'npp_lead' : ''); }
 function get_post_status($id) { return 'private'; }
 function get_post_meta($id,$key,$single=true) { return $GLOBALS['meta'][$id][$key] ?? ''; }
 function update_post_meta($id,$key,$val) { $GLOBALS['meta'][$id][$key] = $val; return true; }
@@ -61,7 +61,7 @@ function update_option($key,$value,$autoload=null){$GLOBALS['options'][$key]=$va
 function wp_salt($scheme){return 'test-only-wordpress-auth-salt';}
 class TestWpdb {
  public $posts='wp_posts';
- public function prepare($query,...$args){return (int)$args[2];}
+ public function prepare($query,...$args){return (int)$args[count($args)-1];}
  public function get_col($cursor){return array_values(array_filter(range(1000,1122),function($id)use($cursor){return $id>$cursor;})) ? array_slice(array_values(array_filter(range(1000,1122),function($id)use($cursor){return $id>$cursor;})),0,50):array();}
 }
 $wpdb=new TestWpdb();
@@ -104,4 +104,17 @@ $export=khushii_npp_export_enquiries($request);
 check(count($export['items'])===50 && $export['hasMore'] && $export['nextAfter']===1049,'private lead export is bounded and advances cursor');
 $again=khushii_npp_export_payload(42);
 check($again['externalSubmissionId']===$payload['externalSubmissionId'],'push and pull share the same duplicate prevention key');
+$GLOBALS['meta'][84]=array('_khep_name'=>'Example Contact','_khep_email'=>'contact@example.test','_khep_phone'=>'98765 43210','_khep_interest'=>'General Enquiry','_khep_message'=>str_repeat('A',3000),'_khep_consent'=>'Yes');
+$contact=khushii_npp_export_payload(84);
+check(!is_wp_error($contact)&&strpos($contact['externalSubmissionId'],'khep:')===0,'Enquiry Pro gets its own stable namespace');
+check($contact['email']==='contact@example.test'&&strpos($contact['message'],'Interest: General Enquiry')===0,'Enquiry Pro fields mapped');
+check(strpos($contact['message'],str_repeat('A',3000))!==false,'full 3000-character contact message retained');
+check(strpos($contact['message'],'enquiry response only')!==false,'contact consent is not promoted to marketing consent');
+$before=count($GLOBALS['hooks']['shutdown']);
+khushii_npp_meta_saved(1,84,'_khep_crm_status','Not configured');
+check(count($GLOBALS['hooks']['shutdown'])===$before+1,'Enquiry Pro final metadata queues immediate delivery');
+$GLOBALS['response_status']=202;khushii_npp_deliver(84);
+check(get_post_meta(84,'_khushii_crm_status',true)==='sent','Enquiry Pro push delivered');
+$last=json_decode(end($GLOBALS['requests'])[1]['body'],true);
+check($last['externalSubmissionId']===$contact['externalSubmissionId'],'Enquiry Pro push and pull have identical keys');
 echo "Nestoria connector behavior tests passed (including import of 123 enquiries and secret encryption)\n";

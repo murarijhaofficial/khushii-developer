@@ -45,7 +45,7 @@ async function auth(req:AuthRequest,res:Response,next:NextFunction){
 function requireRole(...roles:Role[]){return (req:AuthRequest,res:Response,next:NextFunction)=>roles.includes(req.auth!.role)?next():res.status(403).json({error:'Forbidden'})}
 function secretMatches(a:string|undefined,b:string){if(!a)return false;const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length&&timingSafeEqual(x,y)}
 const loginSchema=z.object({email:z.string().email(),password:z.string().min(1)});
-const leadSchema=z.object({name:z.string().min(2).max(120),phone:z.string().regex(/^\+[1-9]\d{7,14}$/),email:z.string().email().optional().nullable(),source:z.string().max(50).default('manual'),status:z.nativeEnum(LeadStatus).optional(),message:z.string().max(3000).optional().nullable(),projectId:z.string().uuid().optional().nullable(),utmSource:z.string().max(100).optional(),utmCampaign:z.string().max(100).optional()});
+const leadSchema=z.object({name:z.string().min(2).max(120),phone:z.string().regex(/^\+[1-9]\d{7,14}$/),email:z.string().email().optional().nullable(),source:z.string().max(50).default('manual'),status:z.nativeEnum(LeadStatus).optional(),message:z.string().max(6000).optional().nullable(),projectId:z.string().uuid().optional().nullable(),utmSource:z.string().max(100).optional(),utmCampaign:z.string().max(100).optional()});
 app.get('/api/v1/health',(_req,res)=>res.json({status:'ok'}));
 app.post('/api/v1/auth/login',rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false}),async(req,res,next)=>{
  try {
@@ -103,7 +103,7 @@ app.post('/api/v1/campaigns',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN,Role.M
  if(!input.success)return res.status(400).json({error:input.error.flatten()});
  res.status(201).json(await db.campaign.create({data:input.data}));
 });
-app.get('/api/v1/integrations/website-status',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{const where={externalId:{startsWith:'website:nestoria:'}};const [total,last]=await Promise.all([db.lead.count({where}),db.lead.findFirst({where,orderBy:{createdAt:'desc'},select:{createdAt:true}})]);res.json({total,lastReceivedAt:last?.createdAt??null,websiteUrl:process.env.WORDPRESS_SITE_URL||'https://khushiideveloper.com'})}catch(e){next(e)}});
+app.get('/api/v1/integrations/website-status',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{const where={OR:[{externalId:{startsWith:'website:nestoria:'}},{externalId:{startsWith:'website:khep:'}}]};const [total,last]=await Promise.all([db.lead.count({where}),db.lead.findFirst({where,orderBy:{createdAt:'desc'},select:{createdAt:true}})]);res.json({total,lastReceivedAt:last?.createdAt??null,websiteUrl:process.env.WORDPRESS_SITE_URL||'https://khushiideveloper.com'})}catch(e){next(e)}});
 app.post('/api/v1/integrations/nestoria/sync',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(req,res,next)=>{try{
  const input=z.object({after:z.number().int().min(0).max(999999999999).default(0)}).strict().safeParse(req.body);
  if(!input.success)return res.status(400).json({error:'Invalid sync cursor'});

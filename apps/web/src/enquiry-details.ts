@@ -1,13 +1,13 @@
-export type EnquiryDetails = {project?:string;plotSize?:string;budget?:string;preferredVisit?:string;message?:string;sourcePage?:string};
-const keys: Record<string,keyof EnquiryDetails> = {'project':'project','plot size':'plotSize','budget':'budget','preferred visit':'preferredVisit','message':'message','source page':'sourcePage'};
-const order = ['project','plot size','budget','preferred visit','message','source page'];
+export type EnquiryDetails = {project?:string;interest?:string;plotSize?:string;budget?:string;preferredVisit?:string;message?:string;sourcePage?:string};
+const keys: Record<string,keyof EnquiryDetails> = {'project':'project','interest':'interest','plot size':'plotSize','budget':'budget','preferred visit':'preferredVisit','message':'message','source page':'sourcePage'};
+const order = ['project','interest','plot size','budget','preferred visit','message','source page'];
 
 /** Read both multiline connector notes and older WordPress notes with collapsed whitespace. */
 export function parseEnquiryDetails(text:string|null|undefined):EnquiryDetails {
   if(!text?.trim())return {};
   const raw=text.trim();
-  if(!/^Project\s*:/i.test(raw))return {message:raw};
-  const found=[...raw.matchAll(/(?:^|\s)(Project|Plot size|Budget|Preferred visit|Message|Source page)\s*:\s*/gi)];
+  if(!/^(?:Project|Interest)\s*:/i.test(raw))return {message:raw};
+  const found=[...raw.matchAll(/(?:^|\s)(Project|Interest|Plot size|Budget|Preferred visit|Message|Source page)\s*:\s*/gi)];
   const accepted:typeof found=[];let previous=-1;
   for(const match of found){
     const label=match[1].toLowerCase();const index=order.indexOf(label);
