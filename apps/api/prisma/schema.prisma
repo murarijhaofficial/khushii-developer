@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  SALES_MANAGER
+  SALES_EXECUTIVE
+  MARKETING
+  VIEWER
+}
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  SITE_VISIT
+  NEGOTIATION
+  BOOKED
+  WON
+  LOST
+}
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  PAUSED
+  COMPLETED
+}
+model User {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  passwordHash String
+  role Role @default(SALES_EXECUTIVE)
+  createdAt DateTime @default(now())
+  assignedLeads Lead[]
+  sessions Session[]
+}
+model Session {
+  id String @id @default(uuid())
+  tokenHash String @unique
+  csrfToken String
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId])
+  @@index([expiresAt])
+}
+model Project {
+  id String @id @default(uuid())
+  name String
+  slug String @unique
+  location String?
+  leads Lead[]
+  websiteForms WebsiteForm[]
+}
+model WebsiteForm {
+  id String @id @default(uuid())
+  name String
+  enabled Boolean @default(true)
+  projectId String?
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  leads Lead[]
+  @@index([projectId])
+}
+model Lead {
+  id String @id @default(uuid())
+  name String
+  phone String
+  email String?
+  source String @default("manual")
+  status LeadStatus @default(NEW)
+  message String?
+  projectId String?
+  project Project? @relation(fields: [projectId], references: [id])
+  websiteFormId String?
+  websiteForm WebsiteForm? @relation(fields: [websiteFormId], references: [id], onDelete: SetNull)
+  assignedToId String?
+  assignedTo User? @relation(fields: [assignedToId], references: [id])
+  externalId String? @unique
+  utmSource String?
+  utmCampaign String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([phone])
+  @@index([websiteFormId])
+  @@index([status,createdAt])
+}
+model Campaign {
+  id String @id @default(uuid())
+  name String
+  templateName String
+  status CampaignStatus @default(DRAFT)
+  audience String @default("all")
+  createdAt DateTime @default(now())
+}
+model WebhookEvent {
+  id String @id @default(uuid())
+  provider String
+  externalId String
+  receivedAt DateTime @default(now())
+  @@unique([provider,externalId])
+}

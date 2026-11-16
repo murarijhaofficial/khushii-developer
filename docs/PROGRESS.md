@@ -1,0 +1,30 @@
+# Implementation status
+- [x] pnpm workspace and Vercel/Render deployment manifests and lockfile
+- [x] React dashboard, login and lead management UI
+- [x] Express API, Prisma schema, cookie session authentication, role checks and migrations
+- [x] Authenticated website lead ingestion and demo seeding
+- [x] Campaign drafts and API routes
+- [ ] WordPress plugin installation and site form mapping
+- [ ] WhatsApp Cloud API template sending, delivery webhooks, consent and queues
+- [ ] Meta/Google/LinkedIn OAuth and lead sync
+- [ ] Production-grade tests, MFA, refresh/session revocation and security review
+- [ ] Redis worker and workflow automation engine
+
+## Multi-user workflow
+- Added admin team creation, sales lead assignment, role-based lead editing and current-role checks on authenticated requests.
+- Added role policy tests and removed the 100-lead display limit.
+- Still needed: user lifecycle and password reset, audit history, scalable pagination, production bootstrap and live provider integrations with verified webhooks.
+- Installed dependencies, corrected the Prisma schema, generated the initial migration and verified the build and role-policy tests.
+- Created a local PostgreSQL database, applied the initial migration, seeded sample data, and verified the admin login and lead retrieval.
+- Applied the initial migration to the configured Neon database and prepared repeatable demo seeding with a separate remote password.
+
+- Replaced bearer authentication with revocable PostgreSQL sessions, HttpOnly cookies, CSRF protection and login rate limiting; detailed remaining phases are in DEVELOPMENT_PROGRESS.md.
+
+- Added administrator-managed embeddable website forms and HMAC-signed custom website ingestion; live website installation remains to be configured and verified.
+
+- Inspected Nestoria Property Projects 2.2.0 and added a separate signed, retrying WordPress connector for new and existing enquiries, plus CRM enquiry detail display. Live site installation remains pending.
+
+- Rebuilt the Nestoria connector ZIP with an explicit root directory and Unix file permissions after an activation report; archive and PHP checks pass, while live WordPress installation still needs verification.
+
+- Connector 0.2.0: self-contained plugin, WordPress connection settings with encrypted secret, signed connection test, automatic full-history batch scan and CRM refresh. Local tests cover 123 enquiries; actual website installation and public API configuration remain required.
+- Verified signed connection check against the running API (HTTP 200); prepared Render/Vercel installs with the committed lockfile. Public hosting remains to be configured by the user.

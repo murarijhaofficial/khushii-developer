@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: khushii-crm-api
+    runtime: node
+    plan: starter
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @khushii/api db:generate && pnpm --filter @khushii/api build
+    startCommand: pnpm --filter @khushii/api start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: WEBHOOK_SHARED_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        sync: false

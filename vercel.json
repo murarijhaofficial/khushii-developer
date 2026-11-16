@@ -1,0 +1,1 @@
+{"buildCommand":"pnpm --filter @khushii/web build","outputDirectory":"apps/web/dist","installCommand":"corepack enable && pnpm install --frozen-lockfile","framework":"vite"}

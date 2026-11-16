@@ -1,0 +1,13 @@
+{
+  "name": "khushii-crm",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm --filter @khushii/api build && pnpm --filter @khushii/web build",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @khushii/api db:generate",
+    "db:migrate": "pnpm --filter @khushii/api db:migrate",
+    "db:seed": "pnpm --filter @khushii/api db:seed"
+  }
+}
