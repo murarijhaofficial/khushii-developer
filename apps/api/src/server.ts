@@ -102,6 +102,7 @@ app.post('/api/v1/campaigns',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN,Role.M
  if(!input.success)return res.status(400).json({error:input.error.flatten()});
  res.status(201).json(await db.campaign.create({data:input.data}));
 });
+app.get('/api/v1/integrations/website-status',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{const where={externalId:{startsWith:'website:nestoria:'}};const [total,last]=await Promise.all([db.lead.count({where}),db.lead.findFirst({where,orderBy:{createdAt:'desc'},select:{createdAt:true}})]);res.json({total,lastReceivedAt:last?.createdAt??null})}catch(e){next(e)}});
 const websiteFormInput=z.object({name:z.string().trim().min(2).max(100),projectId:z.string().uuid().nullable().optional()}).strict();
 app.get('/api/v1/website-forms',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{res.json(await db.websiteForm.findMany({orderBy:{createdAt:'desc'},include:{project:{select:{name:true}},_count:{select:{leads:true}}}}))}catch(e){next(e)}});
 app.post('/api/v1/website-forms',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(req,res,next)=>{try{const input=websiteFormInput.safeParse(req.body);if(!input.success)return res.status(400).json({error:'Please enter a valid form name and project'});if(input.data.projectId&&!await db.project.findUnique({where:{id:input.data.projectId}}))return res.status(400).json({error:'Project not found'});res.status(201).json(await db.websiteForm.create({data:input.data}))}catch(e){next(e)}});

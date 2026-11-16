@@ -14,7 +14,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
   const secret = 'integration-test-secret-not-for-production';
   const db = new PrismaClient();
   let formId = '';
-  const externalId = `integration-test-${randomUUID()}`;
+  const externalId = `nestoria:integration-test-${randomUUID()}`;
   const server = spawn(process.execPath, ['dist/server.js'], { env: { ...process.env, PORT: String(port), NODE_ENV: 'test', WEBHOOK_SHARED_SECRET: secret, CORS_ORIGIN: 'https://crm.example.test/' }, stdio: 'ignore' });
   const base = `http://127.0.0.1:${port}/api/v1`;
   try {
@@ -66,6 +66,11 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     assert.equal((await fetch(base+'/integrations/website-connection',{method:'POST',headers:signedHeaders,body:signedBody})).status,200);
     assert.equal((await fetch(base+'/integrations/website-connection',{method:'POST',headers:{'content-type':'application/json'},body:'{}'})).status,401);
     assert.equal(await db.lead.count({where:{externalId:`website:${externalId}`}}),1);
+    assert.equal((await fetch(base+'/integrations/website-status')).status,401);
+    const deliveryStatus=await fetch(base+'/integrations/website-status',{headers:{cookie}});
+    assert.equal(deliveryStatus.status,200);
+    const delivery=await deliveryStatus.json() as {total:number;lastReceivedAt:string|null};
+    assert.ok(delivery.total>=1);assert.ok(delivery.lastReceivedAt);
     const imported = await db.lead.findUnique({where:{externalId:`website:${externalId}`}});
     assert.ok(imported?.message?.includes('Plot size: 125 Sq. Yards'));
     const listed = await fetch(base+'/leads',{headers:{cookie}});

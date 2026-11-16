@@ -36,3 +36,5 @@
 - Login network diagnosis: removed silent localhost fallback in production, normalized API origin/path and improved invalid API response/network errors. URL tests and frontend build pass; live Render and Vercel URLs are needed to diagnose hosted reachability/CORS.
 
 - Live diagnosis: Render health, admin login, session and logout return HTTP 200; the supplied Vercel origin is absent from Render CORS responses. Normalize configured origin trailing slashes and test exact allowlist matching. Live dashboard CORS_ORIGIN still needs updating to the supplied Vercel origin.
+
+- Nestoria 0.3.0: immediate new-enquiry attempt with retry fallback, safe delivery diagnostics and manual pending-record send. Added authorized CRM receipt count/last-arrival endpoint and UI; live WordPress installation remains required.

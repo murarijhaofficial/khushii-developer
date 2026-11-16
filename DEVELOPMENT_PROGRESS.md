@@ -86,3 +86,12 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Fix: set Render CORS_ORIGIN to the exact Vercel origin. Code additionally normalizes trailing slashes, rejects invalid origin settings and preserves exact origin matching.
 - Tests: unit and HTTP preflight coverage for allowed and blocked origins, plus workspace build.
 - Status: local fix tested; live environment change pending user dashboard access.
+
+## WordPress delivery reliability
+- Status: TESTED locally and against the public CRM API; actual WordPress delivery unverified.
+- Changes: connector 0.3.0 immediate delivery attempt, safe HTTP/network diagnostics, retry cancellation after success, direct-send admin action and API URL normalization. Added admin-only GET /integrations/website-status and corresponding persisted receipt indicator. No schema changes.
+- Live check: deployed Render signed connection test returned HTTP 200 using configured key; no evidence yet of the website plugin's saved configuration.
+- Verification: PHP tests exercise shutdown registration, retry diagnostics and successful retry cancellation; local API tests cover signatures, idempotency and authorized receipt counts.
+- Remaining: update WordPress plugin and redeploy API/frontend, configure matching key, verify real website submission and historical import.
+
+- Public API diagnostic: two signed deliveries returned HTTP 202 with the same lead ID; authenticated listing showed the lead; exactly that temporary diagnostic record was removed. Workspace build, API tests, PHP syntax and extracted plugin behavior tests passed.

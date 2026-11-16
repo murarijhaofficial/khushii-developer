@@ -1,6 +1,6 @@
-# Nestoria CRM Connector 0.2.0
+# Nestoria CRM Connector 0.3.0
 
-Install the self-contained `nestoria-crm-connector-0.2.0.zip` alongside Nestoria Property Projects. Replace the previous Khushii connector when prompted. Keep the original Nestoria Property Projects active.
+Install the self-contained `nestoria-crm-connector-0.3.0.zip` alongside Nestoria Property Projects. Replace the previous Khushii connector when prompted. Keep the original Nestoria Property Projects active.
 
 Open **Settings > Nestoria CRM Connector** (also under **Property Projects > CRM Connector**):
 1. Enter the publicly reachable HTTPS CRM API URL ending in `/api/v1`.
@@ -17,3 +17,8 @@ If ZIP installation still reports a missing plugin file, use the hosting file ma
 The connector maps name, phone, email, project, plot size, budget, visit date, message and source page. Local Indian mobile numbers are normalized to +91; explicit international numbers are preserved. A matching CRM project slug links the project, and the project name is retained in enquiry details. No marketing consent is inferred. Changing the website URL changes the external lead ID namespace.
 
 Tested with PHP syntax checks, WordPress behavior stubs (including 123 saved enquiries, connection settings controls, secret encryption, signatures and retries), and local CRM API integration tests. Real WordPress activation and delivery require verification on the actual website.
+
+## Delivery fixes in 0.3.0
+New enquiries attempt signed delivery during WordPress shutdown instead of waiting exclusively for Cron. Failed attempts retain the retry queue; historical import and retries still need WP-Cron. A Send next queued enquiry now button lets an administrator process a pending record directly for diagnosis. The CRM sync column reports safe HTTP/network error details and records the last attempt time without logging the secret or contact data. The default API address is `https://khushii-developer.onrender.com/api/v1`; the saved key must match Render WEBHOOK_SHARED_SECRET. CORS does not restrict server-to-server WordPress delivery.
+
+After updating the connector, Save connection, Test CRM connection, Import all saved enquiries, then use Send next queued enquiry now to verify one historical record. Check its Sent state in WordPress and the received-count/last-arrival indicator in CRM Integrations. Deploy the updated API and frontend to enable that indicator. If a record is Sent but not visible to a sales executive, an administrator must assign it first; new website leads begin unassigned. No real website delivery is claimed until the actual site has been verified.

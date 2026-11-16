@@ -4,8 +4,8 @@ define('ABSPATH', __DIR__);
 define('KHUSHII_CRM_API_URL', 'https://crm.example.test/api/v1');
 define('KHUSHII_CRM_WEBHOOK_SECRET', 'test-secret-long-enough-for-tests');
 $GLOBALS['meta'] = array(); $GLOBALS['events'] = array(); $GLOBALS['requests'] = array(); $GLOBALS['response_status'] = 202;
-class WP_Error { public $code; public function __construct($code, $message = '', $data = null) { $this->code = $code; } }
-function add_action(...$args) {} function add_filter(...$args) {}
+class WP_Error { public $code; public $data; public function __construct($code, $message = '', $data = null) { $this->code = $code; $this->data=$data; } public function get_error_data(){return $this->data;} }
+function add_action(...$args) {$GLOBALS['hooks'][$args[0]][]=$args[1];} function add_filter(...$args) {}
 function absint($v) { return abs((int)$v); }
 function get_post_type($id) { return 20 === (int)$id ? 'npp_project' : ((42 === (int)$id || ((int)$id>=1000 && (int)$id<=1122)) ? 'npp_lead' : ''); }
 function get_post_status($id) { return 'private'; }
@@ -13,6 +13,7 @@ function get_post_meta($id,$key,$single=true) { return $GLOBALS['meta'][$id][$ke
 function update_post_meta($id,$key,$val) { $GLOBALS['meta'][$id][$key] = $val; return true; }
 function add_post_meta($id,$key,$val,$unique=false) { if ($unique && isset($GLOBALS['meta'][$id][$key])) return false; $GLOBALS['meta'][$id][$key]=$val; return true; }
 function delete_post_meta($id,$key,$val='') { unset($GLOBALS['meta'][$id][$key]); return true; }
+function wp_clear_scheduled_hook($hook,$args=array()){unset($GLOBALS['events'][$hook . ':' . ($args[0] ?? 'batch')]);}
 function wp_next_scheduled($hook,$args) { return $GLOBALS['events'][$hook . ':' . ($args[0] ?? 'batch')] ?? false; }
 function wp_schedule_single_event($time,$hook,$args,$error=false) { $GLOBALS['events'][$hook . ':' . ($args[0] ?? 'batch')]=$time; return true; }
 function wp_http_validate_url($url) { return filter_var($url, FILTER_VALIDATE_URL); }
@@ -25,7 +26,7 @@ function get_post_field($field,$id) { return 'sample-project'; }
 function home_url($path='/') { return 'https://example.test' . $path; }
 function wp_json_encode($data) { return json_encode($data); }
 function untrailingslashit($v) { return rtrim($v,'/'); }
-function wp_remote_post($url,$args) { $GLOBALS['requests'][]=array($url,$args); return array('status'=>$GLOBALS['response_status'],'body'=>'{"accepted":true,"id":"test-id"}'); }
+function wp_safe_remote_post($url,$args) { $GLOBALS['requests'][]=array($url,$args); return array('status'=>$GLOBALS['response_status'],'body'=>'{"accepted":true,"id":"test-id"}'); }
 function wp_remote_retrieve_response_code($r) { return $r['status']; }
 function wp_remote_retrieve_body($r) { return $r['body']; }
 function sanitize_text_field($v) { return $v; }
@@ -39,8 +40,9 @@ $GLOBALS['meta'][42] = array('_npp_lead_name'=>'Example Visitor','_npp_lead_phon
 khushii_npp_meta_saved(1,42,'_npp_lead_source_url','https://example.test/project');
 check(get_post_meta(42,'_khushii_crm_status',true)==='queued','new enquiry queued');
 unset($GLOBALS['events'][KHUSHII_NPP_CRON . ':42']);
-$GLOBALS['response_status']=503; khushii_npp_deliver(42);
+$GLOBALS['response_status']=503; check(count($GLOBALS['hooks']['shutdown']??array())===1,'new enquiry schedules an immediate shutdown attempt'); foreach($GLOBALS['hooks']['shutdown'] as $callback){$callback();}
 check(get_post_meta(42,'_khushii_crm_status',true)==='queued','failure queued for retry');
+check(strpos(get_post_meta(42,'_khushii_crm_error',true),'HTTP 503')!==false,'safe delivery diagnostic recorded');
 $first=$GLOBALS['requests'][0][1]; $payload=json_decode($first['body'],true);
 check($payload['phone']==='+919876543210' && !isset($payload['email']),'phone and optional email mapping');
 check(strpos($payload['message'],'Plot size: 125 Sq. Yards')!==false && strpos($payload['message'],'Budget: Example budget')!==false && strpos($payload['message'],'Preferred visit: 2027-01-01')!==false,'enquiry fields preserved');
@@ -51,6 +53,7 @@ $GLOBALS['response_status']=202; khushii_npp_deliver(42);
 $second=json_decode($GLOBALS['requests'][1][1]['body'],true);
 check($payload['externalSubmissionId']===$second['externalSubmissionId'],'retries use stable id');
 check(get_post_meta(42,'_khushii_crm_status',true)==='sent','successful delivery recorded');
+check(!wp_next_scheduled(KHUSHII_NPP_CRON,array(42)),'successful immediate delivery cancels retry');
 khushii_npp_deliver(42); check(count($GLOBALS['requests'])===2,'sent lead is not sent again');
 $GLOBALS['options']=array();
 function get_option($key,$default=false){return $GLOBALS['options'][$key]??$default;}
