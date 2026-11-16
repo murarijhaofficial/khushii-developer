@@ -32,3 +32,7 @@
 - Fixed Render build failure from missing generated Prisma enums: API build now explicitly generates its client before TypeScript compilation. Render installs build dependencies and builds only the API. Root pnpm build passed.
 
 - Verified Vercel frontend output at apps/web/dist/index.html and added an explicit apps/web/vercel.json for web-root deployment. Dashboard root/output settings must match; frontend build passed.
+
+- Login network diagnosis: removed silent localhost fallback in production, normalized API origin/path and improved invalid API response/network errors. URL tests and frontend build pass; live Render and Vercel URLs are needed to diagnose hosted reachability/CORS.
+
+- Live diagnosis: Render health, admin login, session and logout return HTTP 200; the supplied Vercel origin is absent from Render CORS responses. Normalize configured origin trailing slashes and test exact allowlist matching. Live dashboard CORS_ORIGIN still needs updating to the supplied Vercel origin.

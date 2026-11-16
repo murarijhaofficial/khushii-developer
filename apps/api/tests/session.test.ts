@@ -15,7 +15,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
   const db = new PrismaClient();
   let formId = '';
   const externalId = `integration-test-${randomUUID()}`;
-  const server = spawn(process.execPath, ['dist/server.js'], { env: { ...process.env, PORT: String(port), NODE_ENV: 'test', WEBHOOK_SHARED_SECRET: secret }, stdio: 'ignore' });
+  const server = spawn(process.execPath, ['dist/server.js'], { env: { ...process.env, PORT: String(port), NODE_ENV: 'test', WEBHOOK_SHARED_SECRET: secret, CORS_ORIGIN: 'https://crm.example.test/' }, stdio: 'ignore' });
   const base = `http://127.0.0.1:${port}/api/v1`;
   try {
     let ready = false;
@@ -25,6 +25,11 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
       await delay(100);
     }
     assert.ok(ready, 'Test API did not start');
+    const preflight=await fetch(base+'/auth/login',{method:'OPTIONS',headers:{Origin:'https://crm.example.test','Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type'}});
+    assert.equal(preflight.headers.get('access-control-allow-origin'),'https://crm.example.test');
+    assert.equal(preflight.headers.get('access-control-allow-credentials'),'true');
+    const blocked=await fetch(base+'/auth/login',{method:'OPTIONS',headers:{Origin:'https://crm.example.test.evil.test','Access-Control-Request-Method':'POST'}});
+    assert.equal(blocked.headers.get('access-control-allow-origin'),null);
     const login = await fetch(base + '/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'admin@khushiideveloper.example', password: process.env.TEST_ADMIN_PASSWORD }) });
     assert.equal(login.status, 200);
     const cookieHeader = login.headers.get('set-cookie');

@@ -72,3 +72,17 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Fix: provide web-root config with dist; retain root config with apps/web/dist; document matching dashboard settings for both roots. No API or database changes.
 - Verification: frontend production build and emitted index.html confirmed.
 - Remaining: save matching Vercel dashboard settings and redeploy.
+
+## Hosted login connection diagnosis
+- Status: TESTED locally; live connection unresolved pending exact deployment URLs.
+- Modified: web API configuration, request handling, tests and documentation.
+- Cause established in code: missing VITE_API_URL previously silently selected localhost in production. The supplied screenshot establishes a browser network failure, not the exact deployed URL or CORS cause.
+- Changes: require a public HTTPS API for production; normalize API origin and trailing slashes; actionable connection/non-JSON errors. No authentication weakening or database changes.
+- Verification: URL validation tests and production frontend/workspace builds.
+- Remaining: confirm actual Render API address and exact Vercel origin, inspect health/CORS and redeploy corrected environment.
+
+## Live login CORS diagnosis
+- Confirmed: public Render health and server-side login/session/logout return HTTP 200; deployed Vercel bundle points to the correct Render /api/v1 URL. Preflight lacks Access-Control-Allow-Origin for the supplied Vercel URL.
+- Fix: set Render CORS_ORIGIN to the exact Vercel origin. Code additionally normalizes trailing slashes, rejects invalid origin settings and preserves exact origin matching.
+- Tests: unit and HTTP preflight coverage for allowed and blocked origins, plus workspace build.
+- Status: local fix tested; live environment change pending user dashboard access.

@@ -2,13 +2,24 @@ import React, {useEffect,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {LayoutDashboard,Users,MessageCircle,FolderKanban,LogOut,Plus,Search,RefreshCw,Building2,ShieldCheck} from 'lucide-react';
 import './style.css';
-const BASE=import.meta.env.VITE_API_URL || 'http://localhost:4000/api/v1';
+import {resolveApiBase} from './api-config';
+let BASE='';let apiConfigurationError='';
+try{BASE=resolveApiBase(import.meta.env.VITE_API_URL,import.meta.env.PROD)}catch(e){apiConfigurationError=(e as Error).message}
 type Lead={id:string;name:string;phone:string;email?:string|null;message?:string|null;source:string;status:string;createdAt:string;project?:{name:string}|null;websiteForm?:{name:string}|null;assignedTo?:{id:string;name:string}|null};
 type User={id:string;name:string;email:string;role:string};
 type Campaign={id:string;name:string;templateName:string;status:string;audience:string};
-async function request<T>(path:string,token:string,init:RequestInit={}):Promise<T>{const res=await fetch(BASE+path,{...init,credentials:'include',headers:{'Content-Type':'application/json',...(token?{'X-CSRF-Token':token}:{ }),...init.headers}});const data=await res.json();if(!res.ok)throw new Error(typeof data.error==='string'?data.error:'Request failed');return data as T}
+async function request<T>(path:string,token:string,init:RequestInit={}):Promise<T>{
+ if(apiConfigurationError)throw new Error(apiConfigurationError);
+ let res:Response;
+ try{res=await fetch(BASE+path,{...init,credentials:'include',headers:{'Content-Type':'application/json',...(token?{'X-CSRF-Token':token}:{}),...init.headers}})}catch{throw new Error('Cannot reach the CRM API. Check that Render is running, Vercel VITE_API_URL points to it, and Render CORS_ORIGIN includes this website address.')}
+ const body=await res.text();let data:unknown;
+ try{data=JSON.parse(body)}catch{throw new Error(`The API returned an unexpected response (HTTP ${res.status}). Check VITE_API_URL and the Render service logs.`)}
+ if(!res.ok){const error=typeof data==='object'&&data!==null&&'error' in data?data.error:undefined;throw new Error(typeof error==='string'?error:`Request failed (HTTP ${res.status})`)}
+ return data as T;
+}
+
 function App(){
- const [token,setToken]=useState('');const [checkingSession,setCheckingSession]=useState(true);const [user,setUser]=useState<User|null>(null);const [users,setUsers]=useState<User[]>([]);const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'SALES_EXECUTIVE'});const [email,setEmail]=useState('admin@khushiideveloper.example');const [password,setPassword]=useState('');const [tab,setTab]=useState('Dashboard');const [leads,setLeads]=useState<Lead[]>([]);const [campaigns,setCampaigns]=useState<Campaign[]>([]);const [stats,setStats]=useState({total:0,newLeads:0,qualified:0,booked:0});const [search,setSearch]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);const [showAdd,setShowAdd]=useState(false);const [newLead,setNewLead]=useState({name:'',phone:'',email:'',source:'manual'});const [newCampaign,setNewCampaign]=useState({name:'',templateName:'project_followup',audience:'qualified'});
+ const [token,setToken]=useState('');const [checkingSession,setCheckingSession]=useState(true);const [user,setUser]=useState<User|null>(null);const [users,setUsers]=useState<User[]>([]);const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'SALES_EXECUTIVE'});const [email,setEmail]=useState('admin@khushiideveloper.example');const [password,setPassword]=useState('');const [tab,setTab]=useState('Dashboard');const [leads,setLeads]=useState<Lead[]>([]);const [campaigns,setCampaigns]=useState<Campaign[]>([]);const [stats,setStats]=useState({total:0,newLeads:0,qualified:0,booked:0});const [search,setSearch]=useState('');const [error,setError]=useState(apiConfigurationError);const [busy,setBusy]=useState(false);const [showAdd,setShowAdd]=useState(false);const [newLead,setNewLead]=useState({name:'',phone:'',email:'',source:'manual'});const [newCampaign,setNewCampaign]=useState({name:'',templateName:'project_followup',audience:'qualified'});
  async function refresh(t=token){if(!t)return;try{const [l,c,s]=await Promise.all([request<Lead[]>('/leads',t),request<Campaign[]>('/campaigns',t),request<typeof stats>('/dashboard',t)]);setLeads(l);setCampaigns(c);setStats(s);if(user&&['SUPER_ADMIN','ADMIN','SALES_MANAGER'].includes(user.role))setUsers(await request<User[]>('/users',t));setError('')}catch(e){setError((e as Error).message)}}
  useEffect(()=>{void request<{user:User;csrfToken:string}>('/auth/me','').then(result=>{setUser(result.user);setToken(result.csrfToken)}).catch(()=>{}).finally(()=>setCheckingSession(false))},[]);
  useEffect(()=>{if(!token||!user)return;void refresh(token);const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void refresh(token)},30000);return ()=>window.clearInterval(timer)},[token,user]);
@@ -19,7 +30,7 @@ function App(){
  async function updateStatus(l:Lead,status:string){try{await request('/leads/'+l.id,token,{method:'PATCH',body:JSON.stringify({status})});await refresh()}catch(e){setError((e as Error).message)}}
  async function addCampaign(e:React.FormEvent){e.preventDefault();try{await request('/campaigns',token,{method:'POST',body:JSON.stringify(newCampaign)});setNewCampaign({name:'',templateName:'project_followup',audience:'qualified'});await refresh()}catch(e){setError((e as Error).message)}}
  if(checkingSession)return <main className="login-wrap"><div className="login-card">Checking session...</div></main>;
- if(!token)return <main className="login-wrap"><form className="login-card" onSubmit={login}><div className="brand"><span className="logo">K</span><div><strong>KHUSHII</strong><small>DEVELOPER CRM</small></div></div><h1>Welcome back</h1><p>Sign in to manage your property enquiries and sales pipeline.</p><label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>{error&&<p className="error">{error}</p>}<button disabled={busy} className="primary">{busy?'Signing in...':'Sign in'}</button></form></main>;
+ if(!token)return <main className="login-wrap"><form className="login-card" onSubmit={login}><div className="brand"><span className="logo">K</span><div><strong>KHUSHII</strong><small>DEVELOPER CRM</small></div></div><h1>Welcome back</h1><p>Sign in to manage your property enquiries and sales pipeline.</p><label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>{error&&<p className="error">{error}</p>}<button disabled={busy||!!apiConfigurationError} className="primary">{busy?'Signing in...':'Sign in'}</button></form></main>;
  const canManage=!!user&&['SUPER_ADMIN','ADMIN','SALES_MANAGER'].includes(user.role);const canEdit=!!user&&['SUPER_ADMIN','ADMIN','SALES_MANAGER','SALES_EXECUTIVE'].includes(user.role);const canAdmin=!!user&&['SUPER_ADMIN','ADMIN'].includes(user.role);const canCampaign=!!user&&['SUPER_ADMIN','ADMIN','MARKETING'].includes(user.role);
  const nav=[['Dashboard',LayoutDashboard],['Leads',Users],['Campaigns',MessageCircle],['Integrations',FolderKanban],...(canAdmin?[['Team',Users] as const]:[])] as const;
  const filtered=leads.filter(l=>(l.name+' '+l.phone+' '+l.source).toLowerCase().includes(search.toLowerCase()));
@@ -35,7 +46,7 @@ function App(){
 type WebsiteForm={id:string;name:string;enabled:boolean;project?:{name:string}|null;_count?:{leads:number}};
 type Project={id:string;name:string};
 function WebsiteForms({token,canAdmin}:{token:string;canAdmin:boolean}){
- const [forms,setForms]=useState<WebsiteForm[]>([]);const [projects,setProjects]=useState<Project[]>([]);const [name,setName]=useState('');const [projectId,setProjectId]=useState('');const [error,setError]=useState('');const [notice,setNotice]=useState('');const [loading,setLoading]=useState(false);
+ const [forms,setForms]=useState<WebsiteForm[]>([]);const [projects,setProjects]=useState<Project[]>([]);const [name,setName]=useState('');const [projectId,setProjectId]=useState('');const [error,setError]=useState(apiConfigurationError);const [notice,setNotice]=useState('');const [loading,setLoading]=useState(false);
  async function load(){try{const [f,p]=await Promise.all([request<WebsiteForm[]>('/website-forms',token),request<Project[]>('/projects',token)]);setForms(f);setProjects(p);setError('')}catch(e){setError((e as Error).message)}}
  useEffect(()=>{if(canAdmin)void load()},[token,canAdmin]);
  async function create(e:React.FormEvent){e.preventDefault();setLoading(true);try{await request('/website-forms',token,{method:'POST',body:JSON.stringify({name,projectId:projectId||null})});setName('');setProjectId('');setNotice('Form created. Copy its embed code to your website.');await load()}catch(e){setError((e as Error).message)}finally{setLoading(false)}}

@@ -8,6 +8,7 @@ import { PrismaClient, Role, LeadStatus } from '@prisma/client';
 import { z } from 'zod';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canAccessLead, leadEditors, leadManagers } from './permissions.js';
+import { parseCorsOrigins } from './cors-config.js';
 
 const db = new PrismaClient();
 const app = express();
@@ -16,7 +17,7 @@ const integrationSecret = process.env.WEBHOOK_SHARED_SECRET;
 if (!integrationSecret || integrationSecret.length < 24 || !origin) throw new Error('Set strong WEBHOOK_SHARED_SECRET and CORS_ORIGIN');
 app.disable('x-powered-by');
 app.use(helmet());
-app.use(cors({origin:origin.split(',').map(x=>x.trim()),credentials:true}));
+app.use(cors({origin:parseCorsOrigins(origin),credentials:true}));
 app.use(express.json({limit:'64kb',verify:(req,_res,buf)=>{(req as Request & {rawBody?:Buffer}).rawBody=Buffer.from(buf)}}));
 app.use(express.urlencoded({extended:false,limit:'16kb'}));
 app.use('/api/v1',rateLimit({windowMs:15*60*1000,limit:300,standardHeaders:'draft-7',legacyHeaders:false}));
