@@ -30,3 +30,5 @@
 - Verified signed connection check against the running API (HTTP 200); prepared Render/Vercel installs with the committed lockfile. Public hosting remains to be configured by the user.
 
 - Fixed Render build failure from missing generated Prisma enums: API build now explicitly generates its client before TypeScript compilation. Render installs build dependencies and builds only the API. Root pnpm build passed.
+
+- Verified Vercel frontend output at apps/web/dist/index.html and added an explicit apps/web/vercel.json for web-root deployment. Dashboard root/output settings must match; frontend build passed.

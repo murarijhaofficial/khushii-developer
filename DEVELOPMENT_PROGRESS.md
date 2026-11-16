@@ -64,3 +64,11 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Fix: explicit schema generation in the API build; install dev dependencies needed for compilation; build API only on Render. No schema or business data changes.
 - Verification: pnpm build passed with the updated generation step, API TypeScript compilation and Vite build. No new feature tests needed for the script correction.
 - Remaining: push changes to the GitHub branch deployed by Render and redeploy with matching build/start settings.
+
+## Vercel output directory configuration
+- Status: TESTED locally; hosted redeployment pending.
+- Modified: apps/web/vercel.json, README and progress docs.
+- Findings: frontend compilation succeeds and emits apps/web/dist/index.html. Vercel expected dist relative to its configured root.
+- Fix: provide web-root config with dist; retain root config with apps/web/dist; document matching dashboard settings for both roots. No API or database changes.
+- Verification: frontend production build and emitted index.html confirmed.
+- Remaining: save matching Vercel dashboard settings and redeploy.
