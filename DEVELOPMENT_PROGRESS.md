@@ -56,3 +56,11 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - API: signed POST /api/v1/integrations/website-connection with database connectivity check. Database changes: none.
 - Tests: PHP syntax and extracted ZIP behavior; settings controls and secret non-disclosure; authenticated connection test; import scan across 123 records, signatures, retries and idempotency; CRM build/type checks.
 - Remaining: a public HTTPS API, installing the connector in WordPress, entering matching credentials and verifying real deliveries. No claim that website leads have been imported.
+
+## Render Prisma build fix
+- Status: TESTED locally; Render redeployment pending.
+- Modified: apps/api/package.json, render.yaml, deployment documentation and progress tracker.
+- Cause: installation could not locate the monorepo Prisma schema, and API compilation ran without generating Prisma Client. Missing Role/LeadStatus enums caused downstream validation and transaction type errors.
+- Fix: explicit schema generation in the API build; install dev dependencies needed for compilation; build API only on Render. No schema or business data changes.
+- Verification: pnpm build passed with the updated generation step, API TypeScript compilation and Vite build. No new feature tests needed for the script correction.
+- Remaining: push changes to the GitHub branch deployed by Render and redeploy with matching build/start settings.

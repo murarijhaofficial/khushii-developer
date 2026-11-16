@@ -28,3 +28,5 @@
 
 - Connector 0.2.0: self-contained plugin, WordPress connection settings with encrypted secret, signed connection test, automatic full-history batch scan and CRM refresh. Local tests cover 123 enquiries; actual website installation and public API configuration remain required.
 - Verified signed connection check against the running API (HTTP 200); prepared Render/Vercel installs with the committed lockfile. Public hosting remains to be configured by the user.
+
+- Fixed Render build failure from missing generated Prisma enums: API build now explicitly generates its client before TypeScript compilation. Render installs build dependencies and builds only the API. Root pnpm build passed.

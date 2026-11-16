@@ -7,10 +7,10 @@
     "dev": "tsx watch src/server.ts",
     "test": "tsx --test src/permissions.test.ts",
     "test:integration": "tsx --test tests/session.test.ts",
-    "build": "tsc",
+    "build": "prisma generate --schema=prisma/schema.prisma && tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "db:generate": "prisma generate",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts"
   },
