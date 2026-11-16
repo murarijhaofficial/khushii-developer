@@ -44,3 +44,8 @@
 - Improved lead display: compact contact rows with full-width enquiry detail panels, structured fields parsed from legacy/multiline notes, project-name fallback, readable dates/budgets and safe source links. Existing records do not need reimporting.
 
 - Added Khushii Enquiry Pro 2.3.0 support to shared connector 0.5.0: new-entry delivery, existing-record sync, separate external IDs, enquiry-interest display and full message preservation. Existing plugin remains intact; live verification pending installation/deployment.
+
+- Added the per-lead workspace, activity/status/assignment history, call logging, reminders and personal follow-up center.
+- Added Resend and approved text-template Cloud API adapters with idempotent message tracking, explicit WhatsApp consent and signed durable status receipts. Provider credential spaces were added to the API .env; no secrets exposed or real messages sent.
+- Added optional email-reminder worker and Render worker definition. Local migrations/tests and fictional-data browser QA passed; Neon additive migrations applied. Provider setup and hosted redeployment remain outstanding.
+- Final verification: workspace GET against configured Neon returned HTTP 200; provider readiness correctly reports email/WhatsApp unavailable while credentials are blank. Local API restored. No lint script is configured.

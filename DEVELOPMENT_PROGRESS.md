@@ -122,3 +122,15 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Schema changes: none. Lead note request limit increased to 6000 (database String already supports it).
 - Tests: Enquiry Pro field/consent mapping, automatic delivery, shared push/pull IDs, mixed-source API imports and retries, interest formatting, PHP syntax, package extraction, TypeScript and production build.
 - Remaining: deploy API/frontend and upgrade shared connector in WordPress, then verify actual form submission and historical imports.
+
+## Per-lead activity and communication workspace
+- Status: TESTED locally; provider activation and hosted deployment outstanding.
+- Created: LeadWorkspace UI, lead-workspace API module, messaging adapters/tests, durable WhatsApp receipt reconciliation, reminder worker, two additive migrations and docs/LEAD_WORKSPACE.md.
+- Modified: Prisma schema, API registration/status/assignment tracking, lead navigation, global follow-ups, styles, tests, environment examples and Render worker deployment.
+- Database: LeadActivity, Reminder, OutboundMessage, LeadConsent; receipt payload and processedAt. Applied to local development and configured Neon databases.
+- API: authorized workspace reads; notes/calls/meetings; consent; reminders/completion; provider configuration flags; approved templates; idempotent outbound email/WhatsApp; signed WhatsApp verification/status webhooks.
+- Tests: mocked provider payloads/template approval; IDOR and viewer write denial; reminder claims and completion; consent gating; duplicate message IDs and payload collisions; webhook signatures, repeats, order and early receipts; headless Chrome note/reminder workflow with fictional data; production build and type checks.
+- Errors: corrected discriminated-union closure typing during compilation. Existing Windows Prisma engine lock requires stopping the local API during generation.
+- Blockers: Resend and WhatsApp credentials are blank placeholders, Meta webhook subscription is not verified and the reminder worker is not deployed.
+- Remaining: live provider configuration and explicit test sends, worker deployment, media/button templates, inbound inbox, email delivery webhooks, older-history pagination and broadcast campaigns.
+- Completion date: not marked complete; live activation outstanding.

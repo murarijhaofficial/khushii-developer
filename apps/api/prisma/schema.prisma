@@ -38,6 +38,10 @@ model User {
   createdAt DateTime @default(now())
   assignedLeads Lead[]
   sessions Session[]
+  activities LeadActivity[]
+  reminders Reminder[]
+  outboundMessages OutboundMessage[]
+  consents LeadConsent[]
 }
 model Session {
   id String @id @default(uuid())
@@ -90,6 +94,67 @@ model Lead {
   @@index([phone])
   @@index([websiteFormId])
   @@index([status,createdAt])
+  activities LeadActivity[]
+  reminders Reminder[]
+  outboundMessages OutboundMessage[]
+  consents LeadConsent[]
+}
+model LeadActivity {
+  id String @id @default(uuid())
+  leadId String
+  lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+  userId String?
+  user User? @relation(fields:[userId],references:[id],onDelete:SetNull)
+  kind String
+  body String
+  createdAt DateTime @default(now())
+  @@index([leadId,createdAt])
+}
+model Reminder {
+  id String @id @default(uuid())
+  leadId String
+  lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  title String
+  dueAt DateTime
+  completedAt DateTime?
+  emailNotify Boolean @default(false)
+  emailStatus String @default("PENDING")
+  emailError String?
+  createdAt DateTime @default(now())
+  @@index([userId,completedAt,dueAt])
+  @@index([emailNotify,emailStatus,dueAt])
+}
+model OutboundMessage {
+  id String @id @default(uuid())
+  requestId String @unique
+  fingerprint String
+  leadId String
+  lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+  userId String
+  user User @relation(fields:[userId],references:[id])
+  channel String
+  subject String?
+  body String
+  recipient String
+  status String @default("SENDING")
+  providerId String? @unique
+  error String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([leadId,createdAt])
+}
+model LeadConsent {
+  id String @id @default(uuid())
+  leadId String
+  lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+  userId String
+  user User @relation(fields:[userId],references:[id])
+  optedIn Boolean
+  evidence String
+  createdAt DateTime @default(now())
+  @@index([leadId,createdAt])
 }
 model Campaign {
   id String @id @default(uuid())
@@ -104,5 +169,7 @@ model WebhookEvent {
   provider String
   externalId String
   receivedAt DateTime @default(now())
+  payload Json?
+  processedAt DateTime?
   @@unique([provider,externalId])
 }

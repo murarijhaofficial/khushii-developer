@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canAccessLead, leadEditors, leadManagers } from './permissions.js';
 import { parseCorsOrigins } from './cors-config.js';
+import {registerLeadWorkspace} from './lead-workspace.js';
 import {fetchNestoriaBatch,WebsiteSyncError} from './nestoria-sync.js';
 
 const db = new PrismaClient();
@@ -88,14 +89,15 @@ app.patch('/api/v1/leads/:id',auth,requireRole(...leadEditors),async(req:AuthReq
  const input=leadSchema.partial().safeParse(req.body);if(!input.success)return res.status(400).json({error:input.error.flatten()});
  const current=await db.lead.findUnique({where:{id:req.params.id}});if(!current)return res.status(404).json({error:'Not found'});
  if(!canAccessLead(req.auth!.role,req.auth!.sub,current.assignedToId))return res.status(403).json({error:'Forbidden'});
- const updated=await db.lead.update({where:{id:current.id},data:input.data});res.json(updated);
+ const updated=await db.$transaction(async tx=>{const lead=await tx.lead.update({where:{id:current.id},data:input.data});if(input.data.status&&input.data.status!==current.status)await tx.leadActivity.create({data:{leadId:lead.id,userId:req.auth!.sub,kind:'STATUS_CHANGE',body:`Status changed from ${current.status} to ${input.data.status}`}});return lead});res.json(updated);
 });
 app.patch('/api/v1/leads/:id/assignment',auth,requireRole(...leadManagers),async(req:AuthRequest,res)=>{
  const input=z.object({assignedToId:z.string().uuid().nullable()}).strict().safeParse(req.body);if(!input.success)return res.status(400).json({error:'Invalid assignment'});
  const lead=await db.lead.findUnique({where:{id:req.params.id}});if(!lead)return res.status(404).json({error:'Not found'});
  if(input.data.assignedToId){const user=await db.user.findUnique({where:{id:input.data.assignedToId}});if(!user||!leadEditors.includes(user.role))return res.status(400).json({error:'Select a sales user'});}
- res.json(await db.lead.update({where:{id:lead.id},data:{assignedToId:input.data.assignedToId}}));
+ res.json(await db.$transaction(async tx=>{const updated=await tx.lead.update({where:{id:lead.id},data:{assignedToId:input.data.assignedToId}});if(lead.assignedToId!==input.data.assignedToId)await tx.leadActivity.create({data:{leadId:lead.id,userId:req.auth!.sub,kind:'ASSIGNMENT',body:input.data.assignedToId?'Lead assignment updated.':'Lead moved to the unassigned inbox.'}});return updated}));
 });
+registerLeadWorkspace(app,db,auth,requireRole);
 app.get('/api/v1/projects',auth,async(_req,res)=>res.json(await db.project.findMany({orderBy:{name:'asc'}})));
 app.get('/api/v1/campaigns',auth,async(_req,res)=>res.json(await db.campaign.findMany({orderBy:{createdAt:'desc'}})));
 app.post('/api/v1/campaigns',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN,Role.MARKETING),async(req,res)=>{

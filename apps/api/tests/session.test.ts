@@ -3,8 +3,11 @@ import { strict as assert } from 'node:assert';
 import { spawn } from 'node:child_process';
 import {createServer} from 'node:http';
 import type {AddressInfo} from 'node:net';
-import { createHmac, randomUUID } from 'node:crypto';
-import { PrismaClient } from '@prisma/client';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { PrismaClient,Role } from '@prisma/client';
+import argon2 from 'argon2';
+import {processDueReminders} from '../src/reminder-worker.js';
+import {applyWhatsAppReceipts} from '../src/whatsapp-receipts.js';
 import { setTimeout as delay } from 'node:timers/promises';
 
 // Run only against an isolated, migrated development database with the demo admin seeded.
@@ -15,7 +18,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
   const port = 41379;
   const secret = 'integration-test-secret-not-for-production';
   const db = new PrismaClient();
-  let formId = '';
+  let formId = '';const temporaryUsers:string[]=[];const receiptKeys:string[]=[];
   const externalId = `nestoria:integration-test-${randomUUID()}`;
   const website=createServer((req,res)=>{
     const url=new URL(req.url!,'http://localhost');const after=Number(url.searchParams.get('after'));
@@ -27,7 +30,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
   });
   await new Promise<void>(resolve=>website.listen(0,'127.0.0.1',resolve));
   const websiteUrl=`http://127.0.0.1:${(website.address() as AddressInfo).port}`;
-  const server = spawn(process.execPath, ['dist/server.js'], { env: { ...process.env, PORT: String(port), NODE_ENV: 'test', WEBHOOK_SHARED_SECRET: secret, CORS_ORIGIN: 'https://crm.example.test/', WORDPRESS_SITE_URL: websiteUrl }, stdio: 'ignore' });
+  const server = spawn(process.execPath, ['dist/server.js'], { env: { ...process.env, PORT: String(port), NODE_ENV: 'test', WEBHOOK_SHARED_SECRET: secret, CORS_ORIGIN: 'https://crm.example.test/', WORDPRESS_SITE_URL: websiteUrl, WHATSAPP_APP_SECRET:'test-webhook-secret',WHATSAPP_PHONE_NUMBER_ID:'12345', RESEND_API_KEY:'',EMAIL_FROM:'' }, stdio: 'ignore' });
   const base = `http://127.0.0.1:${port}/api/v1`;
   try {
     let ready = false;
@@ -99,6 +102,43 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     const replay=await fetch(base+'/integrations/nestoria/sync',{method:'POST',headers:syncHeaders,body:JSON.stringify({after:42})});
     assert.equal((await replay.json() as {existing:number}).existing,1);
     assert.equal((await fetch(base+'/integrations/nestoria/sync',{method:'POST',headers:syncHeaders,body:JSON.stringify({after:999})})).status,502);
+    assert.ok(imported);
+    const leadPath=base+'/leads/'+imported!.id;
+    assert.equal((await fetch(leadPath+'/workspace',{headers:{cookie}})).status,200);
+    const note=await fetch(leadPath+'/activities',{method:'POST',headers:syncHeaders,body:JSON.stringify({kind:'NOTE',body:'Discussed the project requirements.'})});assert.equal(note.status,201);
+    const statusChange=await fetch(leadPath,{method:'PATCH',headers:syncHeaders,body:JSON.stringify({status:'CONTACTED'})});assert.equal(statusChange.status,200);
+    assert.equal((await fetch(leadPath+'/messages',{method:'POST',headers:syncHeaders,body:JSON.stringify({channel:'WHATSAPP',requestId:randomUUID(),templateId:'1',parameters:[]})})).status,403);
+    const consent=await fetch(leadPath+'/consent',{method:'POST',headers:syncHeaders,body:JSON.stringify({optedIn:true,evidence:'Explicit test permission recorded by operator.'})});assert.equal(consent.status,201);
+    assert.equal((await fetch(leadPath+'/messages',{method:'POST',headers:syncHeaders,body:JSON.stringify({channel:'WHATSAPP',requestId:randomUUID(),templateId:'1',parameters:[]})})).status,503);
+    const reminderResponse=await fetch(leadPath+'/reminders',{method:'POST',headers:syncHeaders,body:JSON.stringify({title:'Call about the site visit',dueAt:new Date(Date.now()+60000).toISOString()})});assert.equal(reminderResponse.status,201);
+    const reminder=await reminderResponse.json() as {id:string};await db.reminder.update({where:{id:reminder.id},data:{dueAt:new Date(Date.now()-1000),emailNotify:true}});
+    const dueReminders=await fetch(base+'/reminders',{headers:{cookie}});assert.ok((await dueReminders.json() as {items:{id:string}[]}).items.some(r=>r.id===reminder.id));
+    let reminderEmails=0;const fakeEmail=async()=>{reminderEmails++;return 'mock-email'};
+    await processDueReminders(db,fakeEmail,true);await processDueReminders(db,fakeEmail,true);assert.equal(reminderEmails,1);
+    assert.equal((await fetch(leadPath+'/reminders/'+reminder.id,{method:'PATCH',headers:syncHeaders,body:'{}'})).status,200);
+    const adminUser=await db.user.findUniqueOrThrow({where:{email:'admin@khushiideveloper.example'}});
+    const duplicatePayload={channel:'EMAIL',requestId:randomUUID(),subject:'Test subject',body:'Saved test body'};
+    await db.outboundMessage.create({data:{requestId:duplicatePayload.requestId,fingerprint:createHash('sha256').update(JSON.stringify(duplicatePayload)).digest('hex'),leadId:imported!.id,userId:adminUser.id,channel:'EMAIL',recipient:'example@example.test',subject:duplicatePayload.subject,body:duplicatePayload.body,status:'ACCEPTED',providerId:'test-email-'+randomUUID()}});
+    const duplicate=await fetch(leadPath+'/messages',{method:'POST',headers:syncHeaders,body:JSON.stringify(duplicatePayload)});assert.equal(duplicate.status,200);
+    const collision=await fetch(leadPath+'/messages',{method:'POST',headers:syncHeaders,body:JSON.stringify({...duplicatePayload,body:'Changed content'})});assert.equal(collision.status,409);
+    const waProvider='wa-test-'+randomUUID();
+    async function webhook(status:string){const event={id:waProvider,status,timestamp:String(Math.floor(Date.now()/1000))};receiptKeys.push(createHash('sha256').update(`${event.id}:${event.status}:${event.timestamp}`).digest('hex'));const body=JSON.stringify({object:'whatsapp_business_account',entry:[{changes:[{value:{metadata:{phone_number_id:'12345'},statuses:[event]}}]}]});return fetch(base+'/webhooks/whatsapp',{method:'POST',headers:{'content-type':'application/json','x-hub-signature-256':'sha256='+createHmac('sha256','test-webhook-secret').update(body).digest('hex')},body});}
+    assert.equal((await fetch(base+'/webhooks/whatsapp',{method:'POST',headers:{'content-type':'application/json'},body:'{}'})).status,401);
+    assert.equal((await webhook('delivered')).status,200); // arrives before local send response is saved
+    const outbound=await db.outboundMessage.create({data:{requestId:randomUUID(),fingerprint:'test',leadId:imported!.id,userId:adminUser.id,channel:'WHATSAPP',recipient:'+919000000002',body:'Test',status:'ACCEPTED',providerId:waProvider}});
+    await applyWhatsAppReceipts(db,waProvider);assert.equal((await db.outboundMessage.findUniqueOrThrow({where:{id:outbound.id}})).status,'DELIVERED');
+    assert.equal((await webhook('read')).status,200);assert.equal((await webhook('read')).status,200);assert.equal((await webhook('sent')).status,200);
+    assert.equal((await db.outboundMessage.findUniqueOrThrow({where:{id:outbound.id}})).status,'READ');
+    assert.equal(await db.leadActivity.count({where:{leadId:imported!.id,kind:'WHATSAPP_STATUS'}}),2);
+    const password='LocalTestPassword123!';const hash=await argon2.hash(password);
+    const staff=[];for(const role of [Role.SALES_EXECUTIVE,Role.SALES_EXECUTIVE,Role.VIEWER]){const user=await db.user.create({data:{name:'Test staff',email:randomUUID()+'@example.test',role,passwordHash:hash}});temporaryUsers.push(user.id);staff.push(user)}
+    await db.lead.update({where:{id:imported!.id},data:{assignedToId:staff[0].id}});
+    async function staffSession(email:string){const r=await fetch(base+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password})});assert.equal(r.status,200);const result=await r.json() as {csrfToken:string};return {cookie:r.headers.get('set-cookie')!.split(';')[0],'x-csrf-token':result.csrfToken,'content-type':'application/json'};}
+    const own=await staffSession(staff[0].email);const other=await staffSession(staff[1].email);const viewer=await staffSession(staff[2].email);
+    assert.equal((await fetch(leadPath+'/workspace',{headers:own})).status,200);assert.equal((await fetch(leadPath+'/workspace',{headers:other})).status,404);
+    assert.equal((await fetch(leadPath+'/activities',{method:'POST',headers:other,body:JSON.stringify({kind:'NOTE',body:'Forbidden'})})).status,404);
+    assert.equal((await fetch(leadPath+'/activities',{method:'POST',headers:viewer,body:JSON.stringify({kind:'NOTE',body:'Forbidden'})})).status,403);
+    assert.equal((await fetch(leadPath+'/reminders',{method:'POST',headers:own,body:JSON.stringify({title:'Wrong recipient',dueAt:new Date(Date.now()+60000).toISOString(),userId:staff[1].id})})).status,403);
     const rejected = await fetch(base + '/auth/logout', { method: 'POST', headers: { cookie } });
     assert.equal(rejected.status, 403);
     const logout = await fetch(base + '/auth/logout', { method: 'POST', headers: { cookie, 'x-csrf-token': csrfToken } });
@@ -109,6 +149,8 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     if(formId){await db.lead.deleteMany({where:{websiteFormId:formId}});await db.websiteForm.deleteMany({where:{id:formId}})}
     await db.lead.deleteMany({where:{externalId:{in:[`website:${externalId}`,`website:${externalId.replace('nestoria:','khep:')}:pulled`]}}});
     website.closeAllConnections();await new Promise<void>(resolve=>website.close(()=>resolve()));
+    await db.user.deleteMany({where:{id:{in:temporaryUsers}}});
+    await db.webhookEvent.deleteMany({where:{provider:'whatsapp',externalId:{in:receiptKeys}}});
     await db.$disconnect();
   }
 });
