@@ -104,3 +104,12 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Behavior: imports private enquiries by ID cursor in pages of 50; createMany skipDuplicates preserves assignments/statuses; invalid contacts and connection errors are reported; arbitrary client-supplied website URLs are not accepted. Push/pull share the same external IDs.
 - Verification: build and type checks, local signed mock-WordPress integration tests covering multiple pages, repeat import, unauthorized access and remote auth failure; PHP authentication/export/field mapping and packaged connector behavior tests.
 - Remaining: install connector 0.4.0 on actual WordPress and deploy CRM changes; verify actual historical imports. No claim that live WordPress data has been imported.
+
+## Lead enquiry presentation
+- Status: TESTED locally; frontend redeployment pending.
+- Created: apps/web/src/enquiry-details.ts and apps/web/tests/enquiry-details.test.ts.
+- Modified: lead table UI and responsive styles; progress documentation.
+- Changes: full-width labelled enquiry panel, separate project/plot/budget/visit/message/source fields, received project-name fallback when CRM relation is missing, contact links, readable dates and numeric budgets without assuming currency.
+- Data/API changes: none. Existing collapsed WordPress notes are parsed on display; plain notes remain readable and source links permit HTTP/HTTPS only.
+- Verification: parser/security regression tests and production build. No new API authorization or database migration required.
+- Remaining: deploy frontend changes to Vercel and verify the layout in the hosted browser.
