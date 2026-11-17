@@ -99,6 +99,7 @@ model Lead {
   outboundMessages OutboundMessage[]
   consents LeadConsent[]
   enquiries LeadEnquiry[]
+  campaignRecipients CampaignRecipient[]
 }
 model LeadEnquiry {
   id String @id @default(uuid())
@@ -159,6 +160,7 @@ model OutboundMessage {
   error String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  campaignRecipient CampaignRecipient?
   @@index([leadId,createdAt])
 }
 model LeadConsent {
@@ -178,7 +180,36 @@ model Campaign {
   templateName String
   status CampaignStatus @default(DRAFT)
   audience String @default("all")
+  templateId String?
+  templateBody String?
+  templateLanguage String?
+  parameters Json?
+  startedById String?
+  recipients CampaignRecipient[]
   createdAt DateTime @default(now())
+}
+model CampaignRecipient {
+  id String @id @default(uuid())
+  campaignId String
+  campaign Campaign @relation(fields:[campaignId],references:[id],onDelete:Cascade)
+  leadId String
+  lead Lead @relation(fields:[leadId],references:[id],onDelete:Restrict)
+  status String @default("PENDING")
+  error String?
+  claimedAt DateTime?
+  outboundMessageId String? @unique
+  outboundMessage OutboundMessage? @relation(fields:[outboundMessageId],references:[id],onDelete:SetNull)
+  @@unique([campaignId,leadId])
+  @@index([campaignId,status])
+}
+model CampaignTemplateDraft {
+  id String @id @default(uuid())
+  name String
+  language String
+  body String
+  parameterCount Int
+  createdAt DateTime @default(now())
+  @@index([name,language])
 }
 model WebhookEvent {
   id String @id @default(uuid())

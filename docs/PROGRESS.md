@@ -68,3 +68,39 @@
 - A signed, read-only WordPress export returned HTTP 200 with 10 enquiries and 0 rejected items. The configured database lacks LeadEnquiry; read-only migration audit found 20261117010000_lead_enquiries is the only pending migration and no failed migrations. The configured database has not been proven to be the one used by the deployed API.
 - Current sync and website receipt status require LeadEnquiry. The migration creates the table and backfills enquiry records from existing leads. Render configuration does not apply migrations.
 - No database or website data modified. Remaining: obtain approval to apply the migration to the configured remote database, verify the deployed API database matches, then run sync and confirm records; review campaign selection, sending and reports separately. No build needed for this diagnostic-only documentation update.
+
+## Website lead migration and import (2026-11-17)
+- Status: TESTED against configured remote database and signed WordPress export; deployed CRM UI/database connection still needs confirmation.
+- Applied approved 20261117010000_lead_enquiries migration. Signed WordPress sync processed 10 records: 2 new leads, 4 new enquiries on existing leads, 4 existing submissions, 0 rejected. A repeat processed all 10 as existing, with no additional leads or enquiries.
+- Remaining: verify the hosted CRM is using this database and that website enquiries appear in the UI; campaign audience, launch and reporting remain unfinished.
+
+## WordPress sync reporting (2026-11-17)
+- Status: IMPLEMENTED locally; hosted deployment and integration test pending.
+- The sync API now reports newly created leads, enquiries attached to existing leads and replayed submissions separately; the UI labels those counts and falls back for older APIs. The existing response field is retained.
+- Verification: pnpm build, workspace typecheck, 5 API unit tests and 5 frontend tests passed. The integration test was updated but requires an isolated local PostgreSQL database, unavailable here. No lint script is configured.
+- The approved remote migration and live WordPress import were completed and retry-tested; hosted CRM database identity and UI still need verification. Campaign audience selection, sending and reporting remain unimplemented.
+
+## CRM database configuration review (2026-11-17)
+- Status: REVIEWED locally; hosted environment values remain unverified.
+- Confirmed the API, Prisma schema and reminder worker use server-side DATABASE_URL. Prisma stores CRM records and campaign drafts; browser localStorage only keeps the desktop-notification preference. Meta templates are fetched from the provider when configured.
+- Documented that Render API and worker each need the intended database configured separately; never expose its URL in Vite. No database or environment values changed.
+- Remaining: confirm the hosted API and worker use the same intended database, deploy pending sync reporting changes, and implement campaign audience selection, sending and reports. The last production build and typecheck passed; no new build required for this documentation-only review.
+
+## Campaign audience and reporting (2026-11-17)
+- Status: IMPLEMENTED and tested with mocked Meta; hosted deployment and live provider verification pending.
+- Added individual and select-all audience selection, approved-template selection and variables, start/pause actions, durable recipient claims and reports. Current opt-in is checked before dispatch; duplicate phone numbers within a campaign are rejected; unknown sends are never automatically retried. Legacy drafts remain stored and require recreation to start.
+- Database: additive 20261117020000_campaign_recipients migration applied to the configured CRM database; no CRM campaign or customer records were changed. A pooled migration attempt left an idle advisory lock; disconnected the verified idle session and applied through a direct connection. Public migration records verified afterward.
+- Verification: pnpm build, workspace typecheck, 12 API unit/HTTP tests, 5 frontend regression tests and Prisma schema validation passed. All migrations and a campaign opt-in/skip/report flow passed in a uniquely named temporary schema using fictional data and a mocked provider; schema removed afterward. Existing full session integration suite remains unrun because no isolated local PostgreSQL server is available. No lint script configured.
+- Remaining: deploy API and frontend, confirm hosted services use the intended database, configure and verify the Meta account and signed webhooks, then explicitly enable CAMPAIGN_WORKER_ENABLED and conduct an authorized live test. No campaign messages sent; provider configuration and live results remain unverified.
+
+## Offline campaign preparation (2026-11-17)
+- Status: IMPLEMENTED and tested locally with mocked Meta; hosted deployment and live provider verification pending.
+- Added database-backed CRM template drafts and campaign draft creation without provider credentials. Drafts are explicitly unapproved and are not submitted to Meta. Starting requires a matching approved Meta name, language and body; the saved name, body and language are rechecked during dispatch. Static provider headers and footers remain outside the CRM draft.
+- Database: additive 20261117030000_campaign_template_drafts migration applied to the configured CRM database and its migration record verified. No campaign messages or actual provider requests were sent.
+- Verification: pnpm build, workspace typecheck, 15 API tests and 5 frontend regression tests passed. In an isolated temporary schema, tested offline template/campaign creation, rejection while unconfigured and when Meta content mismatched, and mocked approved dispatch with opt-in and reports; schema removed. Full existing session integration suite remains unrun because no isolated local PostgreSQL server is available. No lint script configured.
+- Remaining: deploy API/frontend and confirm hosted database configuration; configure Meta credentials, approve matching templates and subscribe verified webhooks; run an explicitly authorized live test before enabling campaign sending.
+
+## Template draft management (2026-11-17)
+- Added authorized editing and deletion of CRM template drafts without provider tokens. Existing campaign snapshots retain the name, language and body selected at creation, even if the original draft changes.
+- Verification: 15 API tests including draft role checks, workspace typecheck and pnpm build passed. The isolated end-to-end check covered draft creation but preceded the edit/delete controls; those controls were checked with mocked database HTTP tests. No live Meta send performed.
+- Remaining: deploy API/frontend and verify hosted database, then configure and verify Meta approval, credentials and webhooks before enabling campaign sending.

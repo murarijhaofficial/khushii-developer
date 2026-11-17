@@ -18,7 +18,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
   const port = 41379;
   const secret = 'integration-test-secret-not-for-production';
   const db = new PrismaClient();
-  let formId = '';const temporaryUsers:string[]=[];const receiptKeys:string[]=[];
+  let formId = '';let campaignId='';const temporaryUsers:string[]=[];const receiptKeys:string[]=[];
   const externalId = `nestoria:integration-test-${randomUUID()}`;
   const website=createServer((req,res)=>{
     const url=new URL(req.url!,'http://localhost');const after=Number(url.searchParams.get('after'));
@@ -30,7 +30,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
   });
   await new Promise<void>(resolve=>website.listen(0,'127.0.0.1',resolve));
   const websiteUrl=`http://127.0.0.1:${(website.address() as AddressInfo).port}`;
-  const server = spawn(process.execPath, ['dist/server.js'], { env: { ...process.env, PORT: String(port), NODE_ENV: 'test', WEBHOOK_SHARED_SECRET: secret, CORS_ORIGIN: 'https://crm.example.test/', WORDPRESS_SITE_URL: websiteUrl, WHATSAPP_APP_SECRET:'test-webhook-secret',WHATSAPP_PHONE_NUMBER_ID:'12345', RESEND_API_KEY:'',EMAIL_FROM:'' }, stdio: 'ignore' });
+  const server = spawn(process.execPath, ['dist/server.js'], { env: { ...process.env, PORT: String(port), NODE_ENV: 'test', WEBHOOK_SHARED_SECRET: secret, CORS_ORIGIN: 'https://crm.example.test/', WORDPRESS_SITE_URL: websiteUrl, WHATSAPP_APP_SECRET:'test-webhook-secret',WHATSAPP_PHONE_NUMBER_ID:'12345', RESEND_API_KEY:'',EMAIL_FROM:'',CAMPAIGN_WORKER_ENABLED:'false' }, stdio: 'ignore' });
   const base = `http://127.0.0.1:${port}/api/v1`;
   try {
     let ready = false;
@@ -103,7 +103,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     const syncHeaders={cookie,'x-csrf-token':csrfToken,'content-type':'application/json'};
     const firstSync=await fetch(base+'/integrations/nestoria/sync',{method:'POST',headers:syncHeaders,body:JSON.stringify({after:0})});
     assert.equal(firstSync.status,200);const firstBatch=await firstSync.json() as {created:number;existing:number;hasMore:boolean;rejected:unknown[]};
-    assert.equal(firstBatch.created,0);assert.equal(firstBatch.existing,1);assert.equal(firstBatch.hasMore,true);assert.equal(firstBatch.rejected.length,1);
+    assert.equal(firstBatch.created,0);assert.equal(firstBatch.existing,1);assert.equal((firstBatch as typeof firstBatch & {replayed:number;attached:number}).replayed,1);assert.equal((firstBatch as typeof firstBatch & {replayed:number;attached:number}).attached,0);assert.equal(firstBatch.hasMore,true);assert.equal(firstBatch.rejected.length,1);
     const secondSync=await fetch(base+'/integrations/nestoria/sync',{method:'POST',headers:syncHeaders,body:JSON.stringify({after:42})});
     assert.equal(secondSync.status,200);assert.equal((await secondSync.json() as {created:number}).created,1);
     const replay=await fetch(base+'/integrations/nestoria/sync',{method:'POST',headers:syncHeaders,body:JSON.stringify({after:42})});
@@ -142,6 +142,12 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     await db.lead.update({where:{id:imported!.id},data:{assignedToId:staff[0].id}});
     async function staffSession(email:string){const r=await fetch(base+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password})});assert.equal(r.status,200);const result=await r.json() as {csrfToken:string};return {cookie:r.headers.get('set-cookie')!.split(';')[0],'x-csrf-token':result.csrfToken,'content-type':'application/json'};}
     const own=await staffSession(staff[0].email);const other=await staffSession(staff[1].email);const viewer=await staffSession(staff[2].email);
+    const campaign=await db.campaign.create({data:{name:'Campaign test',templateName:'test',templateId:'test',parameters:[],audience:'selected',recipients:{create:{leadId:imported!.id}}}});campaignId=campaign.id;
+    assert.equal((await fetch(base+'/campaigns/'+campaignId+'/report',{headers:viewer})).status,403);
+    assert.equal((await fetch(base+'/campaigns/'+campaignId+'/start',{method:'POST',headers:viewer,body:'{}'})).status,403);
+    assert.equal((await fetch(base+'/campaigns/'+campaignId+'/report',{headers:syncHeaders})).status,200);
+    assert.equal((await fetch(base+'/campaigns/'+campaignId+'/start',{method:'POST',headers:syncHeaders,body:'{}'})).status,503);
+    assert.equal((await fetch(base+'/campaigns',{method:'POST',headers:viewer,body:JSON.stringify({name:'Bad',templateId:'x',parameters:[],leadIds:[imported!.id]})})).status,403);
     assert.equal((await fetch(leadPath+'/workspace',{headers:own})).status,200);assert.equal((await fetch(leadPath+'/workspace',{headers:other})).status,404);
     assert.equal((await fetch(leadPath+'/activities',{method:'POST',headers:other,body:JSON.stringify({kind:'NOTE',body:'Forbidden'})})).status,404);
     assert.equal((await fetch(leadPath+'/activities',{method:'POST',headers:viewer,body:JSON.stringify({kind:'NOTE',body:'Forbidden'})})).status,403);
@@ -153,6 +159,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     assert.equal((await fetch(base + '/auth/me', { headers: { cookie } })).status, 401);
   } finally {
     server.kill();
+    if(campaignId)await db.campaign.deleteMany({where:{id:campaignId}});
     if(formId){await db.lead.deleteMany({where:{websiteFormId:formId}});await db.websiteForm.deleteMany({where:{id:formId}})}
     await db.lead.deleteMany({where:{externalId:{in:[`website:${externalId}`,`website:${externalId.replace('nestoria:','khep:')}:pulled`]}}});
     website.closeAllConnections();await new Promise<void>(resolve=>website.close(()=>resolve()));

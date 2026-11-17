@@ -12,6 +12,7 @@ import { parseCorsOrigins } from './cors-config.js';
 import {registerLeadWorkspace} from './lead-workspace.js';
 import {fetchNestoriaBatch,WebsiteSyncError} from './nestoria-sync.js';
 import {phoneSchema,saveEnquiry} from './enquiries.js';
+import {registerCampaigns,processCampaigns} from './campaigns.js';
 
 const db = new PrismaClient();
 const app = express();
@@ -103,12 +104,7 @@ app.patch('/api/v1/leads/:id/assignment',auth,requireRole(...leadManagers),async
 });
 registerLeadWorkspace(app,db,auth,requireRole);
 app.get('/api/v1/projects',auth,async(_req,res)=>res.json(await db.project.findMany({orderBy:{name:'asc'}})));
-app.get('/api/v1/campaigns',auth,async(_req,res)=>res.json(await db.campaign.findMany({orderBy:{createdAt:'desc'}})));
-app.post('/api/v1/campaigns',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN,Role.MARKETING),async(req,res)=>{
- const input=z.object({name:z.string().min(3).max(120),templateName:z.string().min(1).max(120),audience:z.string().max(100).default('all')}).safeParse(req.body);
- if(!input.success)return res.status(400).json({error:input.error.flatten()});
- res.status(201).json(await db.campaign.create({data:input.data}));
-});
+registerCampaigns(app,db,auth,requireRole);
 app.get('/api/v1/integrations/website-status',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{const where={OR:[{externalId:{startsWith:'website:nestoria:'}},{externalId:{startsWith:'website:khep:'}}]};const [total,last]=await Promise.all([db.leadEnquiry.count({where}),db.leadEnquiry.findFirst({where,orderBy:{createdAt:'desc'},select:{createdAt:true}})]);res.json({total,lastReceivedAt:last?.createdAt??null,websiteUrl:process.env.WORDPRESS_SITE_URL||'https://khushiideveloper.com'})}catch(e){next(e)}});
 app.post('/api/v1/integrations/nestoria/sync',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(req,res,next)=>{try{
  const input=z.object({after:z.number().int().min(0).max(999999999999).default(0)}).strict().safeParse(req.body);
@@ -117,8 +113,8 @@ app.post('/api/v1/integrations/nestoria/sync',auth,requireRole(Role.SUPER_ADMIN,
  const slugs=[...new Set(batch.items.flatMap(item=>item.projectSlug?[item.projectSlug]:[]))];
  const projects=await db.project.findMany({where:{slug:{in:slugs}},select:{id:true,slug:true}});
  const projectIds=new Map(projects.map(p=>[p.slug,p.id]));
- let created=0;for(const item of batch.items){const result=await saveEnquiry(db,{name:item.name,phone:item.phone,email:item.email,message:item.message,source:'website',externalId:'website:'+item.externalSubmissionId,projectId:item.projectSlug?projectIds.get(item.projectSlug):undefined});if(result.created)created++;}
- res.json({created,existing:batch.items.length-created,rejected:batch.rejected,nextAfter:batch.nextAfter,hasMore:batch.hasMore});
+ let created=0,attached=0,replayed=0;for(const item of batch.items){const result=await saveEnquiry(db,{name:item.name,phone:item.phone,email:item.email,message:item.message,source:'website',externalId:'website:'+item.externalSubmissionId,projectId:item.projectSlug?projectIds.get(item.projectSlug):undefined});if(result.created)created++;else if(result.replayed)replayed++;else attached++;}
+ res.json({created,attached,replayed,existing:attached+replayed,rejected:batch.rejected,nextAfter:batch.nextAfter,hasMore:batch.hasMore});
  }catch(e){if(e instanceof WebsiteSyncError)return res.status(502).json({error:e.message});next(e)}});
 const websiteFormInput=z.object({name:z.string().trim().min(2).max(100),projectId:z.string().uuid().nullable().optional()}).strict();
 app.get('/api/v1/website-forms',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{res.json(await db.websiteForm.findMany({orderBy:{createdAt:'desc'},include:{project:{select:{name:true}},_count:{select:{leads:true}}}}))}catch(e){next(e)}});
@@ -149,3 +145,5 @@ app.post('/api/v1/integrations/website-connection',verifyWebsiteSignature,async(
 app.use((err:unknown,_req:Request,res:Response,_next:NextFunction)=>{console.error('Request error',err);res.status(500).json({error:'Internal server error'})});
 const port=Number(process.env.PORT||4000);
 app.listen(port,'0.0.0.0',()=>console.log(`Khushii CRM API listening on ${port}`));
+let campaignCycle=false;
+setInterval(()=>{if(campaignCycle)return;campaignCycle=true;void processCampaigns(db).catch(()=>console.error('Campaign processing failed. Check the database and provider configuration.')).finally(()=>{campaignCycle=false})},5000).unref();
