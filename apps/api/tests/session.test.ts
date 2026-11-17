@@ -68,6 +68,13 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     const formBody = new URLSearchParams({submissionId,name:'Example Visitor',phone:'+919000000001',email:'',message:'Test',website:''});
     for (let i=0;i<2;i++) assert.equal((await fetch(`${base}/public/forms/${formId}/submissions`,{method:'POST',body:formBody})).status,200);
     assert.equal(await db.lead.count({where:{websiteFormId:formId}}),1);
+    const repeatBody=new URLSearchParams({submissionId:randomUUID().replaceAll('-',''),name:'Example Visitor',phone:'9000000001',email:'',message:'Second enquiry',website:''});
+    assert.equal((await fetch(`${base}/public/forms/${formId}/submissions`,{method:'POST',body:repeatBody})).status,200);
+    assert.equal(await db.lead.count({where:{websiteFormId:formId}}),1);
+    const formLead=await db.lead.findFirstOrThrow({where:{websiteFormId:formId},include:{enquiries:true}});
+    assert.equal(formLead.enquiries.length,2);assert.ok(formLead.enquiries.some(e=>e.message==='Second enquiry'));
+    assert.equal((await fetch(`${base}/public/forms/${formId}/submissions`,{method:'POST',body:repeatBody})).status,200);
+    assert.equal(await db.leadEnquiry.count({where:{leadId:formLead.id}}),2);
     const disable=await fetch(`${base}/website-forms/${formId}`,{method:'PATCH',headers:{cookie,'x-csrf-token':csrfToken,'content-type':'application/json'},body:JSON.stringify({enabled:false})});
     assert.equal(disable.status,200);
     assert.equal((await fetch(`${base}/public/forms/${formId}/submissions`,{method:'POST',body:formBody})).status,404);

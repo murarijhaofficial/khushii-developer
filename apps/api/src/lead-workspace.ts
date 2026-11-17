@@ -18,15 +18,16 @@ export function registerLeadWorkspace(app:Express,db:PrismaClient,auth:RequestHa
  const editable=requireRole(...leadEditors);
  async function visibleLead(req:R){if(!z.string().uuid().safeParse(req.params.id).success)return null;return db.lead.findFirst({where:{id:req.params.id,...(req.auth!.role===Role.SALES_EXECUTIVE?{assignedToId:req.auth!.sub}:{})},include:{project:{select:{name:true}},assignedTo:{select:{id:true,name:true}}}});}
  app.get('/api/v1/communication/status',auth,(_req,res)=>res.json({email:emailConfigured(),whatsapp:whatsappConfigured(),emailDescription:'Resend',whatsappDescription:'Official WhatsApp Cloud API'}));
- app.get('/api/v1/communication/templates',auth,editable,wrap(async(_req,res)=>{try{res.json(await listWhatsAppTemplates())}catch(e){if(e instanceof DeliveryError)return res.status(503).json({error:e.message});throw e}}));
+ app.get('/api/v1/communication/templates',auth,requireRole(...leadEditors,Role.MARKETING),wrap(async(_req,res)=>{try{res.json(await listWhatsAppTemplates())}catch(e){if(e instanceof DeliveryError)return res.status(503).json({error:e.message});throw e}}));
  app.get('/api/v1/leads/:id/workspace',auth,wrap(async(req,res)=>{
   const lead=await visibleLead(req);if(!lead)return res.status(404).json({error:'Lead not found'});
-  const [activities,reminders,messages,consent]=await Promise.all([
+  const [activities,reminders,messages,consent,enquiries]=await Promise.all([
    db.leadActivity.findMany({where:{leadId:lead.id},orderBy:{createdAt:'desc'},take:100,include:{user:{select:{name:true}}}}),
    db.reminder.findMany({where:{leadId:lead.id},orderBy:{dueAt:'asc'},take:100,include:{user:{select:{id:true,name:true}}}}),
    db.outboundMessage.findMany({where:{leadId:lead.id},orderBy:{createdAt:'desc'},take:100,include:{user:{select:{name:true}}}}),
-   db.leadConsent.findFirst({where:{leadId:lead.id},orderBy:[{createdAt:'desc'},{optedIn:'asc'},{id:'desc'}]})]);
-  res.json({lead,activities,reminders,messages,consent});
+   db.leadConsent.findFirst({where:{leadId:lead.id},orderBy:[{createdAt:'desc'},{optedIn:'asc'},{id:'desc'}]}),
+   db.leadEnquiry.findMany({where:{leadId:lead.id},orderBy:{createdAt:'desc'}})]);
+  res.json({lead,activities,reminders,messages,consent,enquiries});
  }));
  app.post('/api/v1/leads/:id/activities',auth,editable,wrap(async(req,res)=>{const lead=await visibleLead(req);if(!lead)return res.status(404).json({error:'Lead not found'});const input=activityInput.safeParse(req.body);if(!input.success)return res.status(400).json({error:'Enter a note or call/meeting outcome, up to 6000 characters.'});res.status(201).json(await db.leadActivity.create({data:{...input.data,leadId:lead.id,userId:req.auth!.sub}}));}));
  app.post('/api/v1/leads/:id/consent',auth,editable,wrap(async(req,res)=>{

@@ -134,3 +134,16 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Blockers: Resend and WhatsApp credentials are blank placeholders, Meta webhook subscription is not verified and the reminder worker is not deployed.
 - Remaining: live provider configuration and explicit test sends, worker deployment, media/button templates, inbound inbox, email delivery webhooks, older-history pagination and broadcast campaigns.
 - Completion date: not marked complete; live activation outstanding.
+
+## Phone-based repeat enquiries (2026-11-17)
+- Status: IMPLEMENTED - verification and deployment pending.
+- Cause: website idempotency matched submission ID only; manual leads were always inserted.
+- Changes: enquiry history migration and backfill; phone normalization and serialized matching across lead creation, forms and website sync; authorized workspace enquiry history; manual duplicate access control. Existing lead status/assignment are preserved. Existing duplicates are not merged.
+- Verification: Prisma client generation and direct API/frontend TypeScript checks passed. Added normalization and integration coverage; test execution blocked by Node uv_os_get_passwd ENOMEM in this Windows environment. `pnpm build` was blocked because pnpm could not verify/download the pinned pnpm release from the registry; a direct Vite build ran out of memory. No lint script configured. Migration has not been applied; integration tests require an isolated migrated local database.
+- Remaining: resolve host resource/user-profile issue, run tests and pnpm build, apply migration to target database and deploy; review historical duplicates and verify live ingestion.
+
+## Campaign and template review (2026-11-17)
+- Status: IN PROGRESS; campaign audience selection, campaign launch, and reports are not implemented.
+- Added a Templates navigation page for approved Meta templates and selection into the existing campaign draft; marketing users can read approved templates. No schema change or provider send added.
+- Verification: API and frontend TypeScript checks, direct Vite production build and five compiled API unit tests passed. The normal tsx runner failed because Node uv_os_get_passwd returned ENOMEM. pnpm build was blocked because pinned pnpm verification could not reach the registry. Template navigation and marketing authorization have not been integration-tested; no live Meta account tested. No lint script configured.
+- Remaining: implement persisted individual/select-all audiences, authorization and opt-in enforcement, safe durable campaign delivery and reporting, tests, provider verification and production build.

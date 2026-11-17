@@ -46,3 +46,14 @@ The Render blueprint includes khushii-crm-reminders. Configure its DATABASE_URL,
 Provider adapter tests use mocked APIs; no real email or WhatsApp messages were sent. Integration tests cover owner/viewer access, notes, reminders, single worker claims, idempotent message retries, explicit opt-in, signature rejection, receipt deduplication/order and early-receipt reconciliation. Headless Chrome tested lead opening, note persistence, reminder creation and disabled unconfigured sending with a fictional local record that was removed afterward. The screenshot in .local/lead-workspace-preview.png contains only fictional QA data.
 
 Push and redeploy Render/Vercel to publish the updated API/UI. Deploy and configure the reminder worker for email alerts. Fill the server-only provider credentials, set Meta webhook subscription and verify actual provider sends with an explicitly chosen permitted recipient before treating live messaging as connected. No external provider credentials or live messaging are verified yet.
+
+
+## Repeat enquiries and phone matching
+
+New manual, public form, signed website and WordPress sync enquiries are matched to the oldest lead with the same normalized phone number. Enter an Indian 10-digit mobile number or an international number with a leading country code. Each submission is retained in the lead workspace Enquiries section; submission IDs keep website retries idempotent. Existing lead assignment, status and contact details are preserved. Sales executives cannot add an enquiry to a lead they cannot access; a manager must handle it.
+
+Deploy the `20261117010000_lead_enquiries` Prisma migration before the API. It copies each existing lead into its own enquiry record, but does not merge existing duplicate leads or their activities, consent and assignments. If several leads already share a phone number, future enquiries attach to the oldest one; review existing duplicates separately. The phone match identifies a number, not necessarily an individual, so shared numbers need human review. Phone changes on existing leads are currently blocked to avoid creating collisions.
+
+## Campaign templates
+
+The Templates page lists approved templates from Meta when the server-side WhatsApp configuration is present. Supported templates can be copied into a campaign draft. This does not submit or create a Meta template, and draft campaigns cannot send messages. Campaign audience selection, sending, and reports still need implementation and verification. Meta approval and explicit WhatsApp opt-in are required before marketing sends.

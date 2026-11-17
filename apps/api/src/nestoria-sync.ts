@@ -1,9 +1,10 @@
 import { createHmac } from 'node:crypto';
 import { z } from 'zod';
+import {phoneSchema} from './enquiries.js';
 
 const item = z.object({
   externalSubmissionId: z.string().max(150).regex(/^(nestoria|khep):/),
-  name: z.string().min(2).max(120), phone: z.string().regex(/^\+[1-9]\d{7,14}$/),
+  name: z.string().min(2).max(120), phone: phoneSchema,
   email: z.string().email().optional(), message: z.string().max(6000).optional(),
   source: z.literal('website'), projectSlug: z.string().max(150).optional(),
 });

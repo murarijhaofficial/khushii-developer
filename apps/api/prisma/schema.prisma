@@ -98,6 +98,22 @@ model Lead {
   reminders Reminder[]
   outboundMessages OutboundMessage[]
   consents LeadConsent[]
+  enquiries LeadEnquiry[]
+}
+model LeadEnquiry {
+  id String @id @default(uuid())
+  leadId String
+  lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+  externalId String? @unique
+  name String
+  phone String
+  email String?
+  source String
+  message String?
+  projectId String?
+  websiteFormId String?
+  createdAt DateTime @default(now())
+  @@index([leadId,createdAt])
 }
 model LeadActivity {
   id String @id @default(uuid())

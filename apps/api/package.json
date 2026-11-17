@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "test": "tsx --test src/permissions.test.ts src/messaging.test.ts",
+    "test": "tsx --test src/permissions.test.ts src/messaging.test.ts src/enquiries.test.ts",
     "test:integration": "tsx --test tests/session.test.ts",
     "build": "prisma generate --schema=prisma/schema.prisma && tsc",
     "start": "node dist/server.js",
