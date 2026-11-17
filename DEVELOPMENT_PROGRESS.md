@@ -147,3 +147,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Added a Templates navigation page for approved Meta templates and selection into the existing campaign draft; marketing users can read approved templates. No schema change or provider send added.
 - Verification: API and frontend TypeScript checks, direct Vite production build and five compiled API unit tests passed. The normal tsx runner failed because Node uv_os_get_passwd returned ENOMEM. pnpm build was blocked because pinned pnpm verification could not reach the registry. Template navigation and marketing authorization have not been integration-tested; no live Meta account tested. No lint script configured.
 - Remaining: implement persisted individual/select-all audiences, authorization and opt-in enforcement, safe durable campaign delivery and reporting, tests, provider verification and production build.
+
+## Website lead sync diagnosis (2026-11-17)
+- Status: BLOCKED pending database migration and live verification.
+- A signed, read-only WordPress export returned HTTP 200 with 10 enquiries and 0 rejected items. The configured database lacks LeadEnquiry; read-only migration audit found 20261117010000_lead_enquiries is the only pending migration and no failed migrations. The configured database has not been proven to be the one used by the deployed API.
+- Current sync and website receipt status require LeadEnquiry. The migration creates the table and backfills enquiry records from existing leads. Render configuration does not apply migrations.
+- No database or website data modified. Remaining: obtain approval to apply the migration to the configured remote database, verify the deployed API database matches, then run sync and confirm records; review campaign selection, sending and reports separately. No build needed for this diagnostic-only documentation update.
