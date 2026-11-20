@@ -60,6 +60,8 @@ model Project {
   name String
   slug String @unique
   location String?
+  description String?
+  layoutData String?
   status String @default("PLANNING")
   plots Plot[]
   leads Lead[]
@@ -73,6 +75,7 @@ model Plot {
   row Int
   column Int
   area String?
+  boundary Json?
   status String @default("AVAILABLE")
   bookings PlotBooking[]
   @@unique([projectId,label])

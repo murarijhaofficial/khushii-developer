@@ -18,6 +18,10 @@ test('project endpoints enforce role checks, input validation and public plot pr
   assert.equal((await fetch(base+'/projects',{method:'POST',headers:{'content-type':'application/json','x-test-role':'VIEWER'},body})).status,403);
   assert.equal((await fetch(base+'/projects',{method:'POST',headers:{'content-type':'application/json','x-test-role':'ADMIN'},body:JSON.stringify({name:'x',slug:'INVALID!',location:null,status:'ACTIVE'})})).status,400);
   assert.equal((await fetch(base+'/projects',{method:'POST',headers:{'content-type':'application/json','x-test-role':'ADMIN'},body})).status,201);assert.equal(creates,1);
+  assert.equal((await fetch(base+'/projects/'+id+'/layout',{method:'PUT',headers:{'content-type':'application/json','x-test-role':'VIEWER'},body:JSON.stringify({layoutData:null})})).status,403);
+  assert.equal((await fetch(base+'/projects/'+id+'/layout',{method:'PUT',headers:{'content-type':'application/json','x-test-role':'ADMIN'},body:JSON.stringify({layoutData:'data:image/svg+xml;base64,PHN2Zz4='})})).status,400);
+  assert.equal((await fetch(base+'/plots/'+id+'/boundary',{method:'PUT',headers:{'content-type':'application/json','x-test-role':'ADMIN'},body:JSON.stringify({points:[{x:1,y:1},{x:2,y:2},{x:3,y:3}]})})).status,400);
+  assert.equal((await fetch(base+'/plots/'+id+'/boundary',{method:'PUT',headers:{'content-type':'application/json','x-test-role':'VIEWER'},body:JSON.stringify({points:null})})).status,403);
   const plots=await fetch(base+'/projects/'+id+'/plots',{headers:{'x-test-role':'VIEWER'}});assert.equal(plots.status,200);assert.deepEqual(await plots.json(),[{id,label:'A1',row:1,column:1,area:null,status:'BOOKED'}]);
   assert.equal((await fetch(base+'/plots/'+id+'/bookings',{headers:{'x-test-role':'VIEWER'}})).status,403);
   assert.equal((await fetch(base+'/plots/'+id+'/bookings',{method:'POST',headers:{'content-type':'application/json','x-test-role':'SALES_EXECUTIVE'},body:JSON.stringify({leadId:id,status:'BOOKED'})})).status,403);

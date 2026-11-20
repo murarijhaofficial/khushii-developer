@@ -229,3 +229,14 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - The API health and Projects CORS preflight succeeded during inspection. The configured database is missing the sole pending projects migration, which may explain the error if it is the deployed API database; the exact screenshot cause is unverified.
 - Added safe project-list database error forwarding; compiled API and mocked HTTP regression test passed. `pnpm build` stalled. No database migration was applied.
 - Remaining: run isolated migration/booking tests, confirm hosted database and logs, apply migration, deploy API fix and verify an authenticated Projects request.
+
+## Projects migration on Neon (2026-11-20)
+- User confirmed the configured Neon database is the CRM database. Tested migrations and active-booking uniqueness in a temporary schema using fictional records, then removed it. Applied `20261120020000_project_plots_bookings` to the CRM schema via direct Neon and verified the migration record and project status query.
+- A pooled migration attempt failed and left an idle advisory-lock holder; terminated the verified idle PgBouncer session before the successful direct migration. Render health and CORS preflight passed.
+- Remaining: verify Projects and booking flows while authenticated, deploy the local API error-handling fix, and receive project drawings for actual layouts.
+
+## Project layout editor (2026-11-20)
+- Status: IMPLEMENTED locally; migration applied to configured Neon; hosted deployment and browser verification pending.
+- Added Create project, project description, authenticated layout upload, manager-drawn plot boundaries and labelled SVG status overlays, with grid fallback. Reference page is a design example, not a live integration; actual project layouts are still needed.
+- Isolated Neon HTTP test passed for project/plot creation, upload, boundary persistence and layout replacement; temporary schema removed. Applied and verified `20261120030000_project_layout` in the CRM schema. API compile, mocked HTTP tests, web typecheck and direct Vite build passed; `pnpm build` was blocked by registry signature fetch failure. No lint script configured.
+- Remaining: deploy API/frontend and verify real layouts, editing and bookings in a browser. Replacing a layout clears its boundaries but preserves plots and bookings.

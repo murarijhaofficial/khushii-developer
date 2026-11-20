@@ -23,6 +23,7 @@ if (!integrationSecret || integrationSecret.length < 24 || !origin) throw new Er
 app.disable('x-powered-by');
 app.use(helmet());
 app.use(cors({origin:parseCorsOrigins(origin),credentials:true}));
+app.use('/api/v1/projects/:id/layout',express.json({limit:'3mb'}));
 app.use(express.json({limit:'64kb',verify:(req,_res,buf)=>{(req as Request & {rawBody?:Buffer}).rawBody=Buffer.from(buf)}}));
 app.use(express.urlencoded({extended:false,limit:'16kb'}));
 app.use('/api/v1',rateLimit({windowMs:15*60*1000,limit:300,standardHeaders:'draft-7',legacyHeaders:false}));
