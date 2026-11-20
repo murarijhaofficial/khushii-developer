@@ -176,3 +176,10 @@
 - Added and applied `20261120040000_plot_details` to configured Neon, verifying the migration record and all five columns. Tested all migrations and fictional plot details in an isolated temporary schema; removed it. No actual plot details were changed.
 - Verification: Prisma generation, API compilation and mocked authorization/validation tests, frontend typecheck and direct Vite build passed. Added isolated integration test coverage to the existing suite; tsx suite remains blocked by Windows `uv_os_get_passwd` ENOMEM. `pnpm build` stalled and was cancelled; no lint script configured.
 - Remaining: deploy API/frontend and verify plot creation, editing and display in the hosted browser with authorized test data.
+
+## Booking agent and lead search (2026-11-20)
+- Status: IMPLEMENTED locally; Neon migration applied; hosted deployment and browser verification pending.
+- Replaced the booking lead dropdown with a search by name, phone or email, displaying contact details and up to 20 matching results. Added optional selling-agent selection and manager-only correction on active bookings; previous bookings remain unassigned. Server validates active sales/administrator roles and preserves booking privacy.
+- Applied `20261120050000_booking_agent` to configured Neon and verified its migration record. Isolated Neon HTTP tests with fictional data covered agent persistence, invalid role, agent update and viewer denial; temporary schema removed. No production bookings were changed.
+- Verification: API compile, frontend typecheck/direct Vite build, lead-search unit test and isolated HTTP tests passed. `pnpm build` failed because pnpm registry signature verification could not fetch the pinned release. No lint script configured; hosted UI not browser-tested.
+- Remaining: deploy API/frontend, test search and agent assignment in the hosted browser, and verify actual data with authorized users.

@@ -252,3 +252,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Added optional second area and north, south, east and west boundary descriptions to plot forms and selected plot display. All authenticated users can view; managers edit. Existing area remains unchanged and units are user supplied.
 - Applied `20261120040000_plot_details` to configured Neon and verified columns; isolated temporary schema tested persistence and was removed. API compilation/mocked tests, frontend typecheck and direct Vite build passed; full integration runner and `pnpm build` remain blocked by existing environment issues. No lint script configured.
 - Remaining: deploy and verify plot detail editing/display with authorized test data in the browser.
+
+## Booking agent and lead search (2026-11-20)
+- Status: IMPLEMENTED locally; Neon migration applied; deployment and browser verification pending.
+- Added searchable booking lead picker by name/phone/email and optional manager-controlled selling-agent attribution and correction. Previously created bookings remain unassigned; active sales/admin role is enforced by the API.
+- Isolated Neon HTTP tests for persistence, invalid agent, updates and viewer denial passed; temporary schema removed. Migration `20261120050000_booking_agent` applied and verified in CRM Neon. API compile, frontend typecheck/direct Vite build and lead-search test passed. `pnpm build` failed registry signature fetch verification; no lint script configured.
+- Remaining: deploy API/frontend and verify the search and booking flow in the hosted browser.

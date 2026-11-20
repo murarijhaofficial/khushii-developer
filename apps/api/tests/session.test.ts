@@ -164,9 +164,13 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     const bookingPath=base+'/plots/'+plotId+'/bookings';
     assert.equal((await fetch(bookingPath,{headers:viewer})).status,403);
     assert.equal((await fetch(bookingPath,{method:'POST',headers:own,body:JSON.stringify({leadId:imported!.id,status:'RESERVED'})})).status,403);
-    const attempts=await Promise.all([1,2].map(()=>fetch(bookingPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({leadId:imported!.id,status:'RESERVED'})})));assert.deepEqual(attempts.map(r=>r.status).sort(),[201,409]);
+    assert.equal((await fetch(bookingPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({leadId:imported!.id,agentId:staff[2].id,status:'RESERVED'})})).status,400);
+    const attempts=await Promise.all([1,2].map(()=>fetch(bookingPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({leadId:imported!.id,agentId:staff[0].id,status:'RESERVED'})})));assert.deepEqual(attempts.map(r=>r.status).sort(),[201,409]);
     const publicPlots=await (await fetch(plotsPath,{headers:viewer})).json() as {status:string;leadId?:string}[];assert.equal(publicPlots[0].status,'RESERVED');assert.equal(publicPlots[0].leadId,undefined);
-    const history=await (await fetch(bookingPath,{headers:syncHeaders})).json() as {id:string}[];
+    const history=await (await fetch(bookingPath,{headers:syncHeaders})).json() as {id:string;agent:{id:string}|null}[];assert.equal(history[0].agent?.id,staff[0].id);
+    assert.equal((await fetch(bookingPath+'/'+history[0].id+'/agent',{method:'PATCH',headers:viewer,body:JSON.stringify({agentId:staff[1].id})})).status,403);
+    assert.equal((await fetch(bookingPath+'/'+history[0].id+'/agent',{method:'PATCH',headers:syncHeaders,body:JSON.stringify({agentId:staff[1].id})})).status,200);
+    assert.equal(((await (await fetch(bookingPath,{headers:syncHeaders})).json()) as {agent:{id:string}}[])[0].agent.id,staff[1].id);
     assert.equal((await fetch(bookingPath+'/'+history[0].id,{method:'PATCH',headers:syncHeaders,body:JSON.stringify({status:'BOOKED'})})).status,200);
     assert.equal((await fetch(bookingPath+'/'+history[0].id,{method:'PATCH',headers:syncHeaders,body:JSON.stringify({status:'CANCELLED'})})).status,200);
     assert.equal((await db.plot.findUniqueOrThrow({where:{id:plotId}})).status,'AVAILABLE');

@@ -38,6 +38,7 @@ model User {
   role Role @default(SALES_EXECUTIVE)
   createdAt DateTime @default(now())
   assignedLeads Lead[]
+  soldBookings PlotBooking[]
   sessions Session[]
   activities LeadActivity[]
   reminders Reminder[]
@@ -93,11 +94,14 @@ model PlotBooking {
   plot Plot @relation(fields:[plotId],references:[id],onDelete:Restrict)
   leadId String
   lead Lead @relation(fields:[leadId],references:[id],onDelete:Restrict)
+  agentId String?
+  agent User? @relation(fields:[agentId],references:[id],onDelete:SetNull)
   status String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([plotId,createdAt])
   @@index([leadId])
+  @@index([agentId])
 }
 model WebsiteForm {
   id String @id @default(uuid())
