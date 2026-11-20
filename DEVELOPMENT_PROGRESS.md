@@ -189,3 +189,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Added authorized editing and deletion of CRM template drafts without provider tokens. Existing campaign snapshots retain the name, language and body selected at creation, even if the original draft changes.
 - Verification: 15 API tests including draft role checks, workspace typecheck and pnpm build passed. The isolated end-to-end check covered draft creation but preceded the edit/delete controls; those controls were checked with mocked database HTTP tests. No live Meta send performed.
 - Remaining: deploy API/frontend and verify hosted database, then configure and verify Meta approval, credentials and webhooks before enabling campaign sending.
+
+## Sign-in and team presentation (2026-11-20)
+- Status: IMPLEMENTED locally; full verification and deployment pending.
+- Updated the shared login and team account creation UI and removed the Nestoria label in lead lists without changing records or integration attribution. No schema or API changes.
+- Direct frontend and API TypeScript checks and Vite build passed. pnpm commands stalled and direct test runners failed with Windows `uv_os_get_passwd` ENOMEM; no lint script is configured. Hosted page could not be inspected with the available browser tool.
+- Remaining: run `pnpm build` and tests after fixing the environment, deploy, and verify sign-in and team account creation in a browser.
