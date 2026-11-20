@@ -224,3 +224,8 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Added project status for all authenticated users; admins and sales managers can manage projects/plots and reserve, confirm or cancel bookings. SVG grid is explicitly illustrative until project layouts are provided. Added `20261120020000_project_plots_bookings` migration, not applied.
 - Prisma validation/generation, API/web type checks, direct Vite build and mocked HTTP authorization/validation/privacy test passed. Isolated integration tests added but runner fails with Windows `uv_os_get_passwd` ENOMEM; `pnpm build` failed registry signature verification due to fetch failure. No lint script configured.
 - Remaining: receive project drawings and plot positions, implement site-specific layouts, run full build/integration tests, apply reviewed migration, deploy and verify with authorized users. Payment and legal booking workflows are not implemented.
+
+## Projects connection error diagnosis (2026-11-20)
+- The API health and Projects CORS preflight succeeded during inspection. The configured database is missing the sole pending projects migration, which may explain the error if it is the deployed API database; the exact screenshot cause is unverified.
+- Added safe project-list database error forwarding; compiled API and mocked HTTP regression test passed. `pnpm build` stalled. No database migration was applied.
+- Remaining: run isolated migration/booking tests, confirm hosted database and logs, apply migration, deploy API fix and verify an authenticated Projects request.

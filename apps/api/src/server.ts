@@ -147,7 +147,6 @@ app.patch('/api/v1/leads/:id/assignment',auth,requireRole(...leadManagers),async
  res.json(await db.$transaction(async tx=>{const updated=await tx.lead.update({where:{id:lead.id},data:{assignedToId:input.data.assignedToId}});if(lead.assignedToId!==input.data.assignedToId)await tx.leadActivity.create({data:{leadId:lead.id,userId:req.auth!.sub,kind:'ASSIGNMENT',body:input.data.assignedToId?'Lead assignment updated.':'Lead moved to the unassigned inbox.'}});return updated}));
 });
 registerLeadWorkspace(app,db,auth,requireRole);
-app.get('/api/v1/projects',auth,async(_req,res)=>res.json(await db.project.findMany({orderBy:{name:'asc'}})));
 registerProjects(app,db,auth,requireRole);
 registerCampaigns(app,db,auth,requireRole);
 app.get('/api/v1/integrations/website-status',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{const where={OR:[{externalId:{startsWith:'website:nestoria:'}},{externalId:{startsWith:'website:khep:'}}]};const [total,last]=await Promise.all([db.leadEnquiry.count({where}),db.leadEnquiry.findFirst({where,orderBy:{createdAt:'desc'},select:{createdAt:true}})]);res.json({total,lastReceivedAt:last?.createdAt??null,websiteUrl:process.env.WORDPRESS_SITE_URL||'https://khushiideveloper.com'})}catch(e){next(e)}});
