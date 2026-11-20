@@ -246,3 +246,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Read-only check found no saved layout for KD Antriksh Residency. Exact cause of the reported rejection is unconfirmed because the image was not available. Upload now identifies the file signature and normalizes image type; layout view adds responsive fit, zoom and print controls. No schema or production data changes.
 - API build and image/route tests, web typecheck and direct Vite build passed. `pnpm build` stalled and was cancelled; no lint script configured. Actual image upload, responsive browser view and print output remain unverified.
 - Remaining: deploy API/frontend, retry the actual image and confirm Neon persistence and print output.
+
+## Plot details and boundaries (2026-11-20)
+- Status: IMPLEMENTED locally; Neon migration applied; deployment and browser verification pending.
+- Added optional second area and north, south, east and west boundary descriptions to plot forms and selected plot display. All authenticated users can view; managers edit. Existing area remains unchanged and units are user supplied.
+- Applied `20261120040000_plot_details` to configured Neon and verified columns; isolated temporary schema tested persistence and was removed. API compilation/mocked tests, frontend typecheck and direct Vite build passed; full integration runner and `pnpm build` remain blocked by existing environment issues. No lint script configured.
+- Remaining: deploy and verify plot detail editing/display with authorized test data in the browser.

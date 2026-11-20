@@ -169,3 +169,10 @@
 - Image uploads now check actual PNG/JPEG/WebP signatures and normalize mismatched declared types, with an image decode check in the browser and clearer errors for invalid files. Existing authenticated database persistence and role checks remain unchanged. Added responsive fit, zoom and browser print controls; no schema changes.
 - Verification: API TypeScript compilation and image-signature and mocked route tests passed; web typecheck and direct Vite production build passed. `pnpm build` stalled at the launcher and was cancelled; no lint script configured. Actual upload, small-screen rendering and print output have not been browser-tested.
 - Remaining: deploy API/frontend, retry the user's actual image and verify saved layout and print output; the real image was not provided and no project data was modified.
+
+## Plot details and boundaries (2026-11-20)
+- Status: IMPLEMENTED locally; Neon migration applied; deployment and browser verification pending.
+- Added optional second area and north/south/east/west plot boundary descriptions to manager create/edit controls and the selected plot details visible to signed-in users. Existing free-text area is preserved, with units entered explicitly; no automatic conversion.
+- Added and applied `20261120040000_plot_details` to configured Neon, verifying the migration record and all five columns. Tested all migrations and fictional plot details in an isolated temporary schema; removed it. No actual plot details were changed.
+- Verification: Prisma generation, API compilation and mocked authorization/validation tests, frontend typecheck and direct Vite build passed. Added isolated integration test coverage to the existing suite; tsx suite remains blocked by Windows `uv_os_get_passwd` ENOMEM. `pnpm build` stalled and was cancelled; no lint script configured.
+- Remaining: deploy API/frontend and verify plot creation, editing and display in the hosted browser with authorized test data.

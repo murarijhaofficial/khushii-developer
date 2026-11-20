@@ -158,9 +158,9 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     const madeProject=await fetch(base+'/projects',{method:'POST',headers:syncHeaders,body:JSON.stringify(projectBody)});assert.equal(madeProject.status,201);testProjectId=(await madeProject.json() as {id:string}).id;
     const plotsPath=base+'/projects/'+testProjectId+'/plots';
     assert.equal((await fetch(plotsPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({label:'A1',row:0,column:1,area:null})})).status,400);
-    const madePlot=await fetch(plotsPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({label:'A1',row:1,column:1,area:'120 sq yd'})});assert.equal(madePlot.status,201);const plotId=(await madePlot.json() as {id:string}).id;
+    const madePlot=await fetch(plotsPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({label:'A1',row:1,column:1,area:'120 sq yd',areaSqFeet:'1080 sq ft',north:'Internal road',south:'Survey number',east:'Plot A2',west:'Plot A3'})});assert.equal(madePlot.status,201);const plotId=(await madePlot.json() as {id:string}).id;
     assert.equal((await fetch(plotsPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({label:'A2',row:1,column:1,area:null})})).status,409);
-    assert.equal((await fetch(plotsPath,{headers:viewer})).status,200);
+    const detailsResponse=await fetch(plotsPath,{headers:viewer});assert.equal(detailsResponse.status,200);const details=await detailsResponse.json() as {areaSqFeet:string;north:string;south:string;east:string;west:string}[];assert.deepEqual([details[0].areaSqFeet,details[0].north,details[0].south,details[0].east,details[0].west],['1080 sq ft','Internal road','Survey number','Plot A2','Plot A3']);
     const bookingPath=base+'/plots/'+plotId+'/bookings';
     assert.equal((await fetch(bookingPath,{headers:viewer})).status,403);
     assert.equal((await fetch(bookingPath,{method:'POST',headers:own,body:JSON.stringify({leadId:imported!.id,status:'RESERVED'})})).status,403);

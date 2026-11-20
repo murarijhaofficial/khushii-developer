@@ -75,6 +75,11 @@ model Plot {
   row Int
   column Int
   area String?
+  areaSqFeet String?
+  north String?
+  south String?
+  east String?
+  west String?
   boundary Json?
   status String @default("AVAILABLE")
   bookings PlotBooking[]

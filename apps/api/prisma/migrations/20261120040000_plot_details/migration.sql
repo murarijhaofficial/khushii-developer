@@ -1,0 +1,1 @@
+ALTER TABLE "Plot" ADD COLUMN "areaSqFeet" TEXT, ADD COLUMN "north" TEXT, ADD COLUMN "south" TEXT, ADD COLUMN "east" TEXT, ADD COLUMN "west" TEXT;

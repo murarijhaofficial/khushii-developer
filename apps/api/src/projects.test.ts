@@ -4,8 +4,8 @@ import express, {type RequestHandler} from 'express';
 import {Role, type PrismaClient} from '@prisma/client';
 import {registerProjects} from './projects.js';
 test('project endpoints enforce role checks, input validation and public plot privacy',async()=>{
- const id='70000000-0000-4000-8000-000000000001';let creates=0;
- const db={project:{findMany:async()=>{throw new Error('database unavailable')},findUnique:async()=>({id}),create:async({data}:{data:unknown})=>{creates++;return data}},plot:{findMany:async()=>[{id,label:'A1',row:1,column:1,area:null,status:'BOOKED'}]}} as unknown as PrismaClient;
+ const id='70000000-0000-4000-8000-000000000001';let creates=0;let plotSelection:Record<string,unknown>={};
+ const db={project:{findMany:async()=>{throw new Error('database unavailable')},findUnique:async()=>({id}),create:async({data}:{data:unknown})=>{creates++;return data}},plot:{findMany:async(args:{select:Record<string,unknown>})=>{plotSelection=args.select;return [{id,label:'A1',row:1,column:1,area:null,status:'BOOKED'}]},create:async({data}:{data:unknown})=>data}} as unknown as PrismaClient;
  const app=express();app.use(express.json());const auth:RequestHandler=(req,res,next)=>req.header('x-test-role')?next():res.sendStatus(401);
  const requireRole=(...roles:Role[]):RequestHandler=>(req,res,next)=>roles.includes(req.header('x-test-role') as Role)?next():res.sendStatus(403);
  registerProjects(app,db,auth,requireRole);
@@ -22,7 +22,10 @@ test('project endpoints enforce role checks, input validation and public plot pr
   assert.equal((await fetch(base+'/projects/'+id+'/layout',{method:'PUT',headers:{'content-type':'application/json','x-test-role':'ADMIN'},body:JSON.stringify({layoutData:'data:image/svg+xml;base64,PHN2Zz4='})})).status,400);
   assert.equal((await fetch(base+'/plots/'+id+'/boundary',{method:'PUT',headers:{'content-type':'application/json','x-test-role':'ADMIN'},body:JSON.stringify({points:[{x:1,y:1},{x:2,y:2},{x:3,y:3}]})})).status,400);
   assert.equal((await fetch(base+'/plots/'+id+'/boundary',{method:'PUT',headers:{'content-type':'application/json','x-test-role':'VIEWER'},body:JSON.stringify({points:null})})).status,403);
-  const plots=await fetch(base+'/projects/'+id+'/plots',{headers:{'x-test-role':'VIEWER'}});assert.equal(plots.status,200);assert.deepEqual(await plots.json(),[{id,label:'A1',row:1,column:1,area:null,status:'BOOKED'}]);
+  const detailBody={label:'12',row:1,column:1,area:'376.59 sq yd',areaSqFeet:'3389.34 sq ft',north:'Internal Road',south:'Survey 1636',east:'Plot 11',west:'Plot 13'};
+  const createdPlot=await fetch(base+'/projects/'+id+'/plots',{method:'POST',headers:{'content-type':'application/json','x-test-role':'ADMIN'},body:JSON.stringify(detailBody)});assert.equal(createdPlot.status,201);assert.deepEqual(await createdPlot.json(),{...detailBody,projectId:id});
+  assert.equal((await fetch(base+'/projects/'+id+'/plots',{method:'POST',headers:{'content-type':'application/json','x-test-role':'VIEWER'},body:JSON.stringify(detailBody)})).status,403);
+  const plots=await fetch(base+'/projects/'+id+'/plots',{headers:{'x-test-role':'VIEWER'}});assert.equal(plots.status,200);assert.deepEqual(await plots.json(),[{id,label:'A1',row:1,column:1,area:null,status:'BOOKED'}]);for(const field of ['areaSqFeet','north','south','east','west'])assert.equal(plotSelection[field],true);
   assert.equal((await fetch(base+'/plots/'+id+'/bookings',{headers:{'x-test-role':'VIEWER'}})).status,403);
   assert.equal((await fetch(base+'/plots/'+id+'/bookings',{method:'POST',headers:{'content-type':'application/json','x-test-role':'SALES_EXECUTIVE'},body:JSON.stringify({leadId:id,status:'BOOKED'})})).status,403);
  }finally{await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()))}
