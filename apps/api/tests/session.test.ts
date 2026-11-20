@@ -155,8 +155,12 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     // Team account controls and self-service password changes.
     const patchUser=(id:string,headers:Record<string,string>,body:object)=>fetch(base+'/users/'+id,{method:'PATCH',headers,body:JSON.stringify(body)});
     const adminHeaders=await staffSession(staff[3].email);
+    const superAdmin=await db.user.findUniqueOrThrow({where:{email:'admin@khushiideveloper.example'}});
+    assert.equal((await patchUser(superAdmin.id,adminHeaders,{name:superAdmin.name,email:superAdmin.email,role:Role.SUPER_ADMIN,enabled:true})).status,403);
+    if(await db.user.count({where:{role:Role.SUPER_ADMIN,enabled:true}})===1)assert.equal((await patchUser(superAdmin.id,syncHeaders,{name:superAdmin.name,email:superAdmin.email,role:Role.SUPER_ADMIN,enabled:false})).status,409);
     assert.equal((await fetch(base+'/users',{headers:own})).status,403);
-    assert.equal((await patchUser(staff[3].id,adminHeaders,{name:'Admin',email:staff[3].email,role:Role.ADMIN,enabled:false})).status,403);
+    assert.equal((await patchUser(staff[3].id,adminHeaders,{name:'Edited Admin',email:staff[3].email,role:Role.ADMIN,enabled:true})).status,200);
+    assert.equal((await patchUser(staff[3].id,adminHeaders,{name:'Admin',email:staff[3].email,role:Role.ADMIN,enabled:true,password:'NewPassword12345!'})).status,403);
     const edit={name:'Updated staff',email:staff[1].email,role:Role.SALES_EXECUTIVE,enabled:true};
     assert.equal((await patchUser(staff[1].id,own,edit)).status,403);
     assert.equal((await patchUser(staff[1].id,{cookie,'content-type':'application/json'},edit)).status,403);

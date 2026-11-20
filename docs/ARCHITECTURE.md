@@ -14,6 +14,6 @@ For hosted operation, configure the API and reminder worker with the same intend
 
 ## Team account access
 
-Admins can edit team names, emails, roles and access, and set a new password. Only super admins may manage super admin accounts or grant that role; an administrator cannot edit their own account, and the last active super admin cannot be disabled or demoted. Disabling access or resetting a password revokes that user's sessions. All users can change their own password under Account using their current password; other sessions are revoked. Passwords must be 12–128 characters. Share administrator-set passwords securely.
+Admins can edit team names, emails, roles and access, and set a new password. Only super admins may manage super admin accounts or grant that role; an administrator can edit their own details and access, and the last active super admin cannot be disabled or demoted. Disabling access or resetting a password revokes that user's sessions. All users can change their own password from their sidebar profile using their current password; other sessions are revoked. Passwords must be 12–128 characters. Share administrator-set passwords securely.
 
 The `20261120010000_user_enabled` migration must be applied to the intended database before deploying this API. Coordinate the API and frontend deployment, and verify account management with authorized test accounts. No email invitation or password recovery flow is implemented.

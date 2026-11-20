@@ -212,3 +212,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Applied the only pending migration, `20261120010000_user_enabled`, to the configured CRM database; Prisma migration status is now up to date. The missing column could cause the deployed login query to fail.
 - The deployed API returned HTTP 401 for deliberately invalid login credentials, including the reported account; successful login and hosted database identity have not been verified. No user credentials were changed.
 - Remaining: verify an authorized sign-in and team access flows, and check Render logs if the error persists. No source build required for this migration-only repair.
+
+## Team member inline account controls (2026-11-20)
+- Status: IMPLEMENTED locally; deployment and integration verification pending.
+- Added admin editing on the signed-in administrator's team row and removed the separate Account navigation entry; password changes remain available from the sidebar profile with current-password verification. Server protections for super admins and the last active super admin remain in place. No schema changes.
+- API/web type checks and direct frontend build passed. Integration runner failed with Windows `uv_os_get_passwd` ENOMEM; `pnpm build` stalled. No lint script configured.
+- Remaining: run full build and isolated integration tests after fixing tooling, deploy and verify Team and profile controls in a browser.

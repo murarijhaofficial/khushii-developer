@@ -93,7 +93,7 @@ app.patch('/api/v1/users/:id',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),asyn
  try{
   const input=z.object({name:z.string().trim().min(2).max(120),email:z.string().trim().email().max(254),role:z.nativeEnum(Role),enabled:z.boolean(),password:z.string().min(12).max(128).optional()}).strict().safeParse(req.body);
   if(!input.success)return res.status(400).json({error:'Check the account details and password length.'});
-  if(req.params.id===req.auth!.sub)return res.status(403).json({error:'Use Change password for your own account. Another administrator must edit your access.'});
+  if(req.params.id===req.auth!.sub&&input.data.password)return res.status(403).json({error:'Use Change password with your current password for your own account.'});
   const passwordHash=input.data.password?await argon2.hash(input.data.password):undefined;
   const result=await db.$transaction(async tx=>{
    await tx.$executeRaw`SELECT pg_advisory_xact_lock(87341298)`;

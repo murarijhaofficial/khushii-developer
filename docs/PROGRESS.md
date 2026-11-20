@@ -130,3 +130,9 @@
 - The configured CRM database was missing the `User.enabled` column; `20261120010000_user_enabled` was the only pending migration. Applied that additive migration and verified Prisma reports the schema up to date.
 - The deployed Vercel bundle points to the documented Render API. Login requests with intentionally invalid credentials, including the account shown in the reported screenshot, now return HTTP 401 instead of HTTP 500. This verifies the invalid-credential path only; a successful user login and the hosted API's database identity remain unconfirmed. No passwords or user records were changed.
 - Remaining: verify a successful sign-in with authorized credentials and exercise account management; investigate hosted API logs if the original error persists. No source code change or build was required for this database repair.
+
+## Team member inline account controls (2026-11-20)
+- Status: IMPLEMENTED locally; hosted deployment and integration verification pending.
+- Removed the separate Account navigation item. All users can change their own password by opening their sidebar profile; administrators can edit permitted team members, including their own row, directly in Team. Self-service password changes still require the current password. Self-disable signs out the user; the last active super admin cannot be disabled or demoted, and ordinary admins cannot manage super admins.
+- No schema changes. Added integration coverage for own edits, self-password reset denial and super-admin protections. API and web type checks and direct Vite build passed. Integration runner failed before tests with Windows `uv_os_get_passwd` ENOMEM; `pnpm build` stalled at the launcher and was cancelled. No lint script configured.
+- Remaining: resolve the tooling issue, run the integration suite in an isolated migrated database and full build, deploy API and frontend, and verify Team and profile controls in a browser.
