@@ -60,8 +60,36 @@ model Project {
   name String
   slug String @unique
   location String?
+  status String @default("PLANNING")
+  plots Plot[]
   leads Lead[]
   websiteForms WebsiteForm[]
+}
+model Plot {
+  id String @id @default(uuid())
+  projectId String
+  project Project @relation(fields:[projectId],references:[id],onDelete:Restrict)
+  label String
+  row Int
+  column Int
+  area String?
+  status String @default("AVAILABLE")
+  bookings PlotBooking[]
+  @@unique([projectId,label])
+  @@unique([projectId,row,column])
+  @@index([projectId,status])
+}
+model PlotBooking {
+  id String @id @default(uuid())
+  plotId String
+  plot Plot @relation(fields:[plotId],references:[id],onDelete:Restrict)
+  leadId String
+  lead Lead @relation(fields:[leadId],references:[id],onDelete:Restrict)
+  status String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([plotId,createdAt])
+  @@index([leadId])
 }
 model WebsiteForm {
   id String @id @default(uuid())
@@ -101,6 +129,7 @@ model Lead {
   consents LeadConsent[]
   enquiries LeadEnquiry[]
   campaignRecipients CampaignRecipient[]
+  bookings PlotBooking[]
 }
 model LeadEnquiry {
   id String @id @default(uuid())

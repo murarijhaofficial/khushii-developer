@@ -1,0 +1,13 @@
+ALTER TABLE "Project" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'PLANNING';
+ALTER TABLE "Project" ADD CONSTRAINT "Project_status_check" CHECK ("status" IN ('PLANNING','ACTIVE','ON_HOLD','COMPLETED'));
+CREATE TABLE "Plot" ("id" TEXT NOT NULL, "projectId" TEXT NOT NULL, "label" TEXT NOT NULL, "row" INTEGER NOT NULL, "column" INTEGER NOT NULL, "area" TEXT, "status" TEXT NOT NULL DEFAULT 'AVAILABLE', CONSTRAINT "Plot_pkey" PRIMARY KEY ("id"), CONSTRAINT "Plot_status_check" CHECK ("status" IN ('AVAILABLE','RESERVED','BOOKED')), CONSTRAINT "Plot_position_check" CHECK ("row" BETWEEN 1 AND 100 AND "column" BETWEEN 1 AND 100));
+CREATE TABLE "PlotBooking" ("id" TEXT NOT NULL, "plotId" TEXT NOT NULL, "leadId" TEXT NOT NULL, "status" TEXT NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, CONSTRAINT "PlotBooking_pkey" PRIMARY KEY ("id"), CONSTRAINT "PlotBooking_status_check" CHECK ("status" IN ('RESERVED','BOOKED','CANCELLED')));
+CREATE UNIQUE INDEX "Plot_projectId_label_key" ON "Plot"("projectId", "label");
+CREATE UNIQUE INDEX "Plot_projectId_row_column_key" ON "Plot"("projectId", "row", "column");
+CREATE INDEX "Plot_projectId_status_idx" ON "Plot"("projectId", "status");
+CREATE INDEX "PlotBooking_plotId_createdAt_idx" ON "PlotBooking"("plotId", "createdAt");
+CREATE INDEX "PlotBooking_leadId_idx" ON "PlotBooking"("leadId");
+CREATE UNIQUE INDEX "PlotBooking_one_active_per_plot" ON "PlotBooking"("plotId") WHERE "status" IN ('RESERVED','BOOKED');
+ALTER TABLE "Plot" ADD CONSTRAINT "Plot_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "PlotBooking" ADD CONSTRAINT "PlotBooking_plotId_fkey" FOREIGN KEY ("plotId") REFERENCES "Plot"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "PlotBooking" ADD CONSTRAINT "PlotBooking_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

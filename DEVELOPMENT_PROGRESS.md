@@ -218,3 +218,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Added admin editing on the signed-in administrator's team row and removed the separate Account navigation entry; password changes remain available from the sidebar profile with current-password verification. Server protections for super admins and the last active super admin remain in place. No schema changes.
 - API/web type checks and direct frontend build passed. Integration runner failed with Windows `uv_os_get_passwd` ENOMEM; `pnpm build` stalled. No lint script configured.
 - Remaining: run full build and isolated integration tests after fixing tooling, deploy and verify Team and profile controls in a browser.
+
+## Projects, plots and bookings (2026-11-20)
+- Status: IMPLEMENTED locally; actual layouts, integration tests, migration and deployment pending.
+- Added project status for all authenticated users; admins and sales managers can manage projects/plots and reserve, confirm or cancel bookings. SVG grid is explicitly illustrative until project layouts are provided. Added `20261120020000_project_plots_bookings` migration, not applied.
+- Prisma validation/generation, API/web type checks, direct Vite build and mocked HTTP authorization/validation/privacy test passed. Isolated integration tests added but runner fails with Windows `uv_os_get_passwd` ENOMEM; `pnpm build` failed registry signature verification due to fetch failure. No lint script configured.
+- Remaining: receive project drawings and plot positions, implement site-specific layouts, run full build/integration tests, apply reviewed migration, deploy and verify with authorized users. Payment and legal booking workflows are not implemented.

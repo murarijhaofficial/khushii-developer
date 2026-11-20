@@ -18,7 +18,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
   const port = 41379;
   const secret = 'integration-test-secret-not-for-production';
   const db = new PrismaClient();
-  let formId = '';let campaignId='';const temporaryUsers:string[]=[];const receiptKeys:string[]=[];
+  let formId = '';let campaignId='';let testProjectId='';const temporaryUsers:string[]=[];const receiptKeys:string[]=[];
   const externalId = `nestoria:integration-test-${randomUUID()}`;
   const website=createServer((req,res)=>{
     const url=new URL(req.url!,'http://localhost');const after=Number(url.searchParams.get('after'));
@@ -152,6 +152,24 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     assert.equal((await fetch(leadPath+'/activities',{method:'POST',headers:other,body:JSON.stringify({kind:'NOTE',body:'Forbidden'})})).status,404);
     assert.equal((await fetch(leadPath+'/activities',{method:'POST',headers:viewer,body:JSON.stringify({kind:'NOTE',body:'Forbidden'})})).status,403);
     assert.equal((await fetch(leadPath+'/reminders',{method:'POST',headers:own,body:JSON.stringify({title:'Wrong recipient',dueAt:new Date(Date.now()+60000).toISOString(),userId:staff[1].id})})).status,403);
+    // Project visibility, role checks, plot position validation and concurrent booking.
+    const projectBody={name:'Test project',slug:'test-'+randomUUID(),location:null,status:'ACTIVE'};
+    assert.equal((await fetch(base+'/projects',{method:'POST',headers:viewer,body:JSON.stringify(projectBody)})).status,403);
+    const madeProject=await fetch(base+'/projects',{method:'POST',headers:syncHeaders,body:JSON.stringify(projectBody)});assert.equal(madeProject.status,201);testProjectId=(await madeProject.json() as {id:string}).id;
+    const plotsPath=base+'/projects/'+testProjectId+'/plots';
+    assert.equal((await fetch(plotsPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({label:'A1',row:0,column:1,area:null})})).status,400);
+    const madePlot=await fetch(plotsPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({label:'A1',row:1,column:1,area:'120 sq yd'})});assert.equal(madePlot.status,201);const plotId=(await madePlot.json() as {id:string}).id;
+    assert.equal((await fetch(plotsPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({label:'A2',row:1,column:1,area:null})})).status,409);
+    assert.equal((await fetch(plotsPath,{headers:viewer})).status,200);
+    const bookingPath=base+'/plots/'+plotId+'/bookings';
+    assert.equal((await fetch(bookingPath,{headers:viewer})).status,403);
+    assert.equal((await fetch(bookingPath,{method:'POST',headers:own,body:JSON.stringify({leadId:imported!.id,status:'RESERVED'})})).status,403);
+    const attempts=await Promise.all([1,2].map(()=>fetch(bookingPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({leadId:imported!.id,status:'RESERVED'})})));assert.deepEqual(attempts.map(r=>r.status).sort(),[201,409]);
+    const publicPlots=await (await fetch(plotsPath,{headers:viewer})).json() as {status:string;leadId?:string}[];assert.equal(publicPlots[0].status,'RESERVED');assert.equal(publicPlots[0].leadId,undefined);
+    const history=await (await fetch(bookingPath,{headers:syncHeaders})).json() as {id:string}[];
+    assert.equal((await fetch(bookingPath+'/'+history[0].id,{method:'PATCH',headers:syncHeaders,body:JSON.stringify({status:'BOOKED'})})).status,200);
+    assert.equal((await fetch(bookingPath+'/'+history[0].id,{method:'PATCH',headers:syncHeaders,body:JSON.stringify({status:'CANCELLED'})})).status,200);
+    assert.equal((await db.plot.findUniqueOrThrow({where:{id:plotId}})).status,'AVAILABLE');
     // Team account controls and self-service password changes.
     const patchUser=(id:string,headers:Record<string,string>,body:object)=>fetch(base+'/users/'+id,{method:'PATCH',headers,body:JSON.stringify(body)});
     const adminHeaders=await staffSession(staff[3].email);
@@ -187,6 +205,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     assert.equal((await fetch(base + '/auth/me', { headers: { cookie } })).status, 401);
   } finally {
     server.kill();
+    if(testProjectId){await db.plotBooking.deleteMany({where:{plot:{projectId:testProjectId}}});await db.plot.deleteMany({where:{projectId:testProjectId}});await db.project.deleteMany({where:{id:testProjectId}})}
     if(campaignId)await db.campaign.deleteMany({where:{id:campaignId}});
     if(formId){await db.lead.deleteMany({where:{websiteFormId:formId}});await db.websiteForm.deleteMany({where:{id:formId}})}
     await db.lead.deleteMany({where:{externalId:{in:[`website:${externalId}`,`website:${externalId.replace('nestoria:','khep:')}:pulled`]}}});
