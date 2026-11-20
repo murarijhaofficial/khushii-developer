@@ -195,3 +195,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Updated the shared login and team account creation UI and removed the Nestoria label in lead lists without changing records or integration attribution. No schema or API changes.
 - Direct frontend and API TypeScript checks and Vite build passed. pnpm commands stalled and direct test runners failed with Windows `uv_os_get_passwd` ENOMEM; no lint script is configured. Hosted page could not be inspected with the available browser tool.
 - Remaining: run `pnpm build` and tests after fixing the environment, deploy, and verify sign-in and team account creation in a browser.
+
+## Dashboard scrolling and sidebar (2026-11-20)
+- Status: IMPLEMENTED locally; deployment and browser verification pending.
+- Bounded the recent leads table with scrolling and kept the sidebar within the viewport; no schema or API changes.
+- Frontend TypeScript and direct Vite production build passed; `pnpm build` stalled at the launcher. No lint script configured or new automated tests for this presentation change.
+- Remaining: resolve pnpm launcher issue, run the full build, deploy and verify desktop and mobile behavior.

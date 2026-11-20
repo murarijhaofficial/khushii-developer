@@ -111,3 +111,9 @@
 - Removed the Nestoria label from lead-list presentation while preserving lead records and source identifiers. No schema, API or integration changes.
 - Verification: direct API and web TypeScript checks and Vite production build passed. `pnpm build`, workspace typecheck and API test commands stalled at the pnpm launcher; cancelled after waiting. Direct test runners failed with Windows `uv_os_get_passwd` ENOMEM. No lint script configured. Hosted URL was inaccessible to the review tool, so login and team flows require browser verification after deployment.
 - Remaining: resolve the pnpm/Windows environment issue, run the full build and relevant tests, deploy the frontend and verify sign-in and team creation with authorized accounts.
+
+## Dashboard scrolling and sidebar (2026-11-20)
+- Status: IMPLEMENTED locally; hosted deployment and browser verification pending.
+- Recent leads now scroll in a bounded, keyboard-accessible region with a persistent header. The sidebar stays within the viewport instead of stretching with dashboard content. No API or data changes.
+- Verification: frontend TypeScript check and direct Vite production build passed. `pnpm build` stalled at the launcher and was cancelled; no lint script configured. No new automated tests for this presentation-only change.
+- Remaining: resolve pnpm launcher issue, run the full build, deploy and verify scrolling and sidebar behavior on desktop and mobile.
