@@ -207,3 +207,8 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Added admin account editing, disable/reactivate and password reset, and current-password-protected self-service changes. Sessions are revoked as appropriate; super-admin accounts and the last active super-admin are protected. Added migration `20261120010000_user_enabled` and integration coverage.
 - Prisma generation/validation, API and frontend type checks, and direct Vite build passed. The pnpm launcher stalled; test runner failed with Windows `uv_os_get_passwd` ENOMEM. Integration tests require an isolated migrated local database. No lint script configured.
 - Remaining: resolve tooling and run full build/tests, apply migration to the intended database, deploy API/frontend and verify with authorized test accounts.
+
+## Hosted login database repair (2026-11-20)
+- Applied the only pending migration, `20261120010000_user_enabled`, to the configured CRM database; Prisma migration status is now up to date. The missing column could cause the deployed login query to fail.
+- The deployed API returned HTTP 401 for deliberately invalid login credentials, including the reported account; successful login and hosted database identity have not been verified. No user credentials were changed.
+- Remaining: verify an authorized sign-in and team access flows, and check Render logs if the error persists. No source build required for this migration-only repair.

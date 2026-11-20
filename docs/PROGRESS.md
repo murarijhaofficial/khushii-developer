@@ -124,3 +124,9 @@
 - Added additive `20261120010000_user_enabled` migration; it has not been applied to any database. Coordinated API and frontend deployment is required after migration. No external provider dependencies.
 - Added session integration coverage for authorization, validation, password changes, revocation and disabling. Prisma generation and validation, API and frontend TypeScript checks and direct Vite build passed. The integration runner failed before tests with Windows `uv_os_get_passwd` ENOMEM; no isolated local test database is available. `pnpm build` stalled at the launcher and was cancelled. No lint script configured.
 - Remaining: fix test/build environment, run the full build and integration suite against an isolated migrated database, apply migration to the intended deployment database, deploy and verify with authorized test accounts.
+
+## Hosted login database repair (2026-11-20)
+- Status: MIGRATION APPLIED; successful login with real credentials remains unverified.
+- The configured CRM database was missing the `User.enabled` column; `20261120010000_user_enabled` was the only pending migration. Applied that additive migration and verified Prisma reports the schema up to date.
+- The deployed Vercel bundle points to the documented Render API. Login requests with intentionally invalid credentials, including the account shown in the reported screenshot, now return HTTP 401 instead of HTTP 500. This verifies the invalid-credential path only; a successful user login and the hosted API's database identity remain unconfirmed. No passwords or user records were changed.
+- Remaining: verify a successful sign-in with authorized credentials and exercise account management; investigate hosted API logs if the original error persists. No source code change or build was required for this database repair.
