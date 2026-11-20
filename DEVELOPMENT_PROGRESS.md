@@ -240,3 +240,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Added Create project, project description, authenticated layout upload, manager-drawn plot boundaries and labelled SVG status overlays, with grid fallback. Reference page is a design example, not a live integration; actual project layouts are still needed.
 - Isolated Neon HTTP test passed for project/plot creation, upload, boundary persistence and layout replacement; temporary schema removed. Applied and verified `20261120030000_project_layout` in the CRM schema. API compile, mocked HTTP tests, web typecheck and direct Vite build passed; `pnpm build` was blocked by registry signature fetch failure. No lint script configured.
 - Remaining: deploy API/frontend and verify real layouts, editing and bookings in a browser. Replacing a layout clears its boundaries but preserves plots and bookings.
+
+## Project layout upload and frame (2026-11-20)
+- Status: IMPLEMENTED locally; deployment and browser verification pending.
+- Read-only check found no saved layout for KD Antriksh Residency. Exact cause of the reported rejection is unconfirmed because the image was not available. Upload now identifies the file signature and normalizes image type; layout view adds responsive fit, zoom and print controls. No schema or production data changes.
+- API build and image/route tests, web typecheck and direct Vite build passed. `pnpm build` stalled and was cancelled; no lint script configured. Actual image upload, responsive browser view and print output remain unverified.
+- Remaining: deploy API/frontend, retry the actual image and confirm Neon persistence and print output.

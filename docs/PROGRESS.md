@@ -162,3 +162,10 @@
 - Added `20261120030000_project_layout`; tested all migrations and authenticated project/plot creation, image upload, boundary persistence and replacement in an isolated temporary Neon schema with fictional data, then removed the schema. Applied the additive migration to the configured Neon CRM database and verified the finished migration record. No production layout, plot or booking data changed.
 - Verification: Prisma generation, API compilation, mocked HTTP authorization/input tests, frontend typecheck and direct Vite production build passed. `pnpm build` failed because pnpm registry signature verification could not fetch the pinned version; no lint script configured. No actual project layout was provided and browser interactions have not been verified.
 - Remaining: deploy API/frontend, verify uploaded drawings and boundaries with authorized users, and provide actual project layouts. Replacing an image clears boundaries while retaining plot and booking records.
+
+## Project layout upload and frame (2026-11-20)
+- Status: IMPLEMENTED locally; deployment and browser/print verification pending.
+- A read-only Neon check confirmed KD Antriksh Residency currently has no saved layout. The reported file was not available for inspection, so its exact rejection cause is unconfirmed.
+- Image uploads now check actual PNG/JPEG/WebP signatures and normalize mismatched declared types, with an image decode check in the browser and clearer errors for invalid files. Existing authenticated database persistence and role checks remain unchanged. Added responsive fit, zoom and browser print controls; no schema changes.
+- Verification: API TypeScript compilation and image-signature and mocked route tests passed; web typecheck and direct Vite production build passed. `pnpm build` stalled at the launcher and was cancelled; no lint script configured. Actual upload, small-screen rendering and print output have not been browser-tested.
+- Remaining: deploy API/frontend, retry the user's actual image and verify saved layout and print output; the real image was not provided and no project data was modified.
