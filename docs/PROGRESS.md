@@ -117,3 +117,10 @@
 - Recent leads now scroll in a bounded, keyboard-accessible region with a persistent header. The sidebar stays within the viewport instead of stretching with dashboard content. No API or data changes.
 - Verification: frontend TypeScript check and direct Vite production build passed. `pnpm build` stalled at the launcher and was cancelled; no lint script configured. No new automated tests for this presentation-only change.
 - Remaining: resolve pnpm launcher issue, run the full build, deploy and verify scrolling and sidebar behavior on desktop and mobile.
+
+## Team access and password management (2026-11-20)
+- Status: IMPLEMENTED locally; integration verification, migration and deployment pending.
+- Added admin team editing, access disabling/reactivation and password resets, plus self-service password changes for every role. Server checks roles, ownership, CSRF, password length, current password, super-admin restrictions and the last active super-admin rule. Disabling/resetting revokes target sessions; self-service revokes other sessions.
+- Added additive `20261120010000_user_enabled` migration; it has not been applied to any database. Coordinated API and frontend deployment is required after migration. No external provider dependencies.
+- Added session integration coverage for authorization, validation, password changes, revocation and disabling. Prisma generation and validation, API and frontend TypeScript checks and direct Vite build passed. The integration runner failed before tests with Windows `uv_os_get_passwd` ENOMEM; no isolated local test database is available. `pnpm build` stalled at the launcher and was cancelled. No lint script configured.
+- Remaining: fix test/build environment, run the full build and integration suite against an isolated migrated database, apply migration to the intended deployment database, deploy and verify with authorized test accounts.

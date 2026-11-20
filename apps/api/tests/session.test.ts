@@ -138,7 +138,7 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     assert.equal((await db.outboundMessage.findUniqueOrThrow({where:{id:outbound.id}})).status,'READ');
     assert.equal(await db.leadActivity.count({where:{leadId:imported!.id,kind:'WHATSAPP_STATUS'}}),2);
     const password='LocalTestPassword123!';const hash=await argon2.hash(password);
-    const staff=[];for(const role of [Role.SALES_EXECUTIVE,Role.SALES_EXECUTIVE,Role.VIEWER]){const user=await db.user.create({data:{name:'Test staff',email:randomUUID()+'@example.test',role,passwordHash:hash}});temporaryUsers.push(user.id);staff.push(user)}
+    const staff=[];for(const role of [Role.SALES_EXECUTIVE,Role.SALES_EXECUTIVE,Role.VIEWER,Role.ADMIN]){const user=await db.user.create({data:{name:'Test staff',email:randomUUID()+'@example.test',role,passwordHash:hash}});temporaryUsers.push(user.id);staff.push(user)}
     await db.lead.update({where:{id:imported!.id},data:{assignedToId:staff[0].id}});
     async function staffSession(email:string){const r=await fetch(base+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password})});assert.equal(r.status,200);const result=await r.json() as {csrfToken:string};return {cookie:r.headers.get('set-cookie')!.split(';')[0],'x-csrf-token':result.csrfToken,'content-type':'application/json'};}
     const own=await staffSession(staff[0].email);const other=await staffSession(staff[1].email);const viewer=await staffSession(staff[2].email);
@@ -152,6 +152,30 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     assert.equal((await fetch(leadPath+'/activities',{method:'POST',headers:other,body:JSON.stringify({kind:'NOTE',body:'Forbidden'})})).status,404);
     assert.equal((await fetch(leadPath+'/activities',{method:'POST',headers:viewer,body:JSON.stringify({kind:'NOTE',body:'Forbidden'})})).status,403);
     assert.equal((await fetch(leadPath+'/reminders',{method:'POST',headers:own,body:JSON.stringify({title:'Wrong recipient',dueAt:new Date(Date.now()+60000).toISOString(),userId:staff[1].id})})).status,403);
+    // Team account controls and self-service password changes.
+    const patchUser=(id:string,headers:Record<string,string>,body:object)=>fetch(base+'/users/'+id,{method:'PATCH',headers,body:JSON.stringify(body)});
+    const adminHeaders=await staffSession(staff[3].email);
+    assert.equal((await fetch(base+'/users',{headers:own})).status,403);
+    assert.equal((await patchUser(staff[3].id,adminHeaders,{name:'Admin',email:staff[3].email,role:Role.ADMIN,enabled:false})).status,403);
+    const edit={name:'Updated staff',email:staff[1].email,role:Role.SALES_EXECUTIVE,enabled:true};
+    assert.equal((await patchUser(staff[1].id,own,edit)).status,403);
+    assert.equal((await patchUser(staff[1].id,{cookie,'content-type':'application/json'},edit)).status,403);
+    assert.equal((await patchUser(staff[1].id,adminHeaders,{...edit,role:Role.SUPER_ADMIN})).status,403);
+    assert.equal((await patchUser(staff[1].id,syncHeaders,{...edit,password:'short'})).status,400);
+    const secondSession=await staffSession(staff[1].email);
+    assert.equal((await fetch(base+'/auth/password',{method:'POST',headers:other,body:JSON.stringify({currentPassword:'wrong',newPassword:'NewPassword12345!'})})).status,403);
+    assert.equal((await fetch(base+'/auth/password',{method:'POST',headers:other,body:JSON.stringify({currentPassword:password,newPassword:'NewPassword12345!'})})).status,200);
+    assert.equal((await fetch(base+'/auth/me',{headers:other})).status,200);
+    assert.equal((await fetch(base+'/auth/me',{headers:secondSession})).status,401);
+    assert.equal((await patchUser(staff[1].id,syncHeaders,{...edit,password:'ResetPassword12345!'})).status,200);
+    assert.equal((await fetch(base+'/auth/me',{headers:other})).status,401);
+    const newLogin=await fetch(base+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:staff[1].email,password:'ResetPassword12345!'})});assert.equal(newLogin.status,200);
+    const resetCookie=newLogin.headers.get('set-cookie')!.split(';')[0];
+    assert.equal((await patchUser(staff[1].id,syncHeaders,{...edit,enabled:false})).status,200);
+    assert.equal((await fetch(base+'/auth/me',{headers:{cookie:resetCookie}})).status,401);
+    assert.equal((await fetch(base+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:staff[1].email,password:'ResetPassword12345!'})})).status,401);
+    assert.equal((await patchUser(staff[1].id,syncHeaders,edit)).status,200);
+    assert.equal((await fetch(base+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:staff[1].email,password:'ResetPassword12345!'})})).status,200);
     const rejected = await fetch(base + '/auth/logout', { method: 'POST', headers: { cookie } });
     assert.equal(rejected.status, 403);
     const logout = await fetch(base + '/auth/logout', { method: 'POST', headers: { cookie, 'x-csrf-token': csrfToken } });

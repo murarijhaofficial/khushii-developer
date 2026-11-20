@@ -11,3 +11,9 @@ The lead workspace stores activities, reminders, consent evidence and outbound m
 The local API, Prisma migrations and reminder worker read `DATABASE_URL` from the server environment; when started from `apps/api`, dotenv loads it from `apps/api/.env`. Lead and enquiry records, campaign and local template drafts, activities, reminders, user accounts and sessions are stored in this database. The browser stores only the desktop-notification preference locally, not CRM records. Approved templates are retrieved from Meta when configured; local drafts are not submitted to Meta.
 
 For hosted operation, configure the API and reminder worker with the same intended `DATABASE_URL` in their server-side environment. A local `.env` file is not transferred to Render automatically; `render.yaml` declares separate environment variables that must be set for each service. Apply reviewed Prisma migrations to the intended database before deploying code that requires them. Keep the database URL out of Vite variables and source control. Integration tests must use an isolated test database and must not seed or reset the CRM database.
+
+## Team account access
+
+Admins can edit team names, emails, roles and access, and set a new password. Only super admins may manage super admin accounts or grant that role; an administrator cannot edit their own account, and the last active super admin cannot be disabled or demoted. Disabling access or resetting a password revokes that user's sessions. All users can change their own password under Account using their current password; other sessions are revoked. Passwords must be 12–128 characters. Share administrator-set passwords securely.
+
+The `20261120010000_user_enabled` migration must be applied to the intended database before deploying this API. Coordinate the API and frontend deployment, and verify account management with authorized test accounts. No email invitation or password recovery flow is implemented.

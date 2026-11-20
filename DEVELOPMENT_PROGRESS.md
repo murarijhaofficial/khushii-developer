@@ -201,3 +201,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Bounded the recent leads table with scrolling and kept the sidebar within the viewport; no schema or API changes.
 - Frontend TypeScript and direct Vite production build passed; `pnpm build` stalled at the launcher. No lint script configured or new automated tests for this presentation change.
 - Remaining: resolve pnpm launcher issue, run the full build, deploy and verify desktop and mobile behavior.
+
+## Team access and password management (2026-11-20)
+- Status: IMPLEMENTED locally; migration, integration tests and deployment pending.
+- Added admin account editing, disable/reactivate and password reset, and current-password-protected self-service changes. Sessions are revoked as appropriate; super-admin accounts and the last active super-admin are protected. Added migration `20261120010000_user_enabled` and integration coverage.
+- Prisma generation/validation, API and frontend type checks, and direct Vite build passed. The pnpm launcher stalled; test runner failed with Windows `uv_os_get_passwd` ENOMEM. Integration tests require an isolated migrated local database. No lint script configured.
+- Remaining: resolve tooling and run full build/tests, apply migration to the intended database, deploy API/frontend and verify with authorized test accounts.

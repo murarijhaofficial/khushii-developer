@@ -34,6 +34,7 @@ model User {
   name String
   email String @unique
   passwordHash String
+  enabled Boolean @default(true)
   role Role @default(SALES_EXECUTIVE)
   createdAt DateTime @default(now())
   assignedLeads Lead[]

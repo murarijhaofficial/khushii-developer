@@ -39,8 +39,8 @@ async function auth(req:AuthRequest,res:Response,next:NextFunction){
  const token=readSessionCookie(req);
  if(!token||!/^[a-f0-9]{64}$/.test(token))return res.status(401).json({error:'Unauthorized'});
  try {
-  const session=await db.session.findUnique({where:{tokenHash:hashToken(token)},include:{user:{select:{id:true,email:true,role:true}}}});
-  if(!session||session.expiresAt<=new Date())return res.status(401).json({error:'Unauthorized'});
+  const session=await db.session.findUnique({where:{tokenHash:hashToken(token)},include:{user:{select:{id:true,email:true,role:true,enabled:true}}}});
+  if(!session||!session.user.enabled||session.expiresAt<=new Date())return res.status(401).json({error:'Unauthorized'});
   if(!['GET','HEAD','OPTIONS'].includes(req.method)&&!secretMatches(req.header('x-csrf-token'),session.csrfToken))return res.status(403).json({error:'Invalid CSRF token'});
   req.auth={sub:session.user.id,email:session.user.email,role:session.user.role,sessionId:session.id,csrfToken:session.csrfToken};next();
  } catch(e){next(e)}
@@ -54,23 +54,66 @@ app.post('/api/v1/auth/login',rateLimit({windowMs:15*60*1000,limit:10,standardHe
  try {
  const input=loginSchema.safeParse(req.body);if(!input.success)return res.status(400).json({error:'Invalid credentials'});
  const user=await db.user.findUnique({where:{email:input.data.email.toLowerCase()}});
- if(!user||!(await argon2.verify(user.passwordHash,input.data.password)))return res.status(401).json({error:'Invalid credentials'});
+ if(!user||!user.enabled||!(await argon2.verify(user.passwordHash,input.data.password)))return res.status(401).json({error:'Invalid credentials'});
  const token=randomBytes(32).toString('hex');const csrfToken=randomBytes(32).toString('hex');
  const oldToken=readSessionCookie(req);
- await db.$transaction(async(tx)=>{if(oldToken&&/^[a-f0-9]{64}$/.test(oldToken))await tx.session.deleteMany({where:{tokenHash:hashToken(oldToken)}});await tx.session.create({data:{tokenHash:hashToken(token),csrfToken,userId:user.id,expiresAt:new Date(Date.now()+8*60*60*1000)}})});
+ const created=await db.$transaction(async(tx)=>{await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${user.id} FOR UPDATE`;const current=await tx.user.findUnique({where:{id:user.id}});if(!current?.enabled||current.passwordHash!==user.passwordHash)return false;if(oldToken&&/^[a-f0-9]{64}$/.test(oldToken))await tx.session.deleteMany({where:{tokenHash:hashToken(oldToken)}});await tx.session.create({data:{tokenHash:hashToken(token),csrfToken,userId:user.id,expiresAt:new Date(Date.now()+8*60*60*1000)}});return true});if(!created)return res.status(401).json({error:'Invalid credentials'});
  res.cookie('crm_session',token,{...cookieOptions,maxAge:8*60*60*1000});
  res.json({csrfToken,user:{id:user.id,name:user.name,email:user.email,role:user.role}});
  } catch(e){next(e)}
 });
 app.get('/api/v1/auth/me',auth,async(req:AuthRequest,res)=>{const user=await db.user.findUnique({where:{id:req.auth!.sub},select:{id:true,name:true,email:true,role:true}});if(!user)return res.status(401).json({error:'Unauthorized'});res.json({user,csrfToken:req.auth!.csrfToken})});
 app.post('/api/v1/auth/logout',auth,async(req:AuthRequest,res,next)=>{try{await db.session.deleteMany({where:{id:req.auth!.sessionId}});res.clearCookie('crm_session',cookieOptions);res.json({ok:true})}catch(e){next(e)}});
-app.get('/api/v1/users',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN,Role.SALES_MANAGER),async(_req,res)=>res.json(await db.user.findMany({select:{id:true,name:true,email:true,role:true,createdAt:true},orderBy:{name:'asc'}})));
+app.get('/api/v1/users',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN,Role.SALES_MANAGER),async(_req,res)=>res.json(await db.user.findMany({select:{id:true,name:true,email:true,role:true,enabled:true,createdAt:true},orderBy:{name:'asc'}})));
 app.post('/api/v1/users',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(req:AuthRequest,res)=>{
  const input=z.object({name:z.string().trim().min(2).max(120),email:z.string().trim().email().max(254),password:z.string().min(12).max(128),role:z.nativeEnum(Role)}).safeParse(req.body);
  if(!input.success)return res.status(400).json({error:input.error.flatten()});
  if(input.data.role===Role.SUPER_ADMIN&&req.auth!.role!==Role.SUPER_ADMIN)return res.status(403).json({error:'Only a super admin can create a super admin'});
  const email=input.data.email.toLowerCase();if(await db.user.findUnique({where:{email}}))return res.status(409).json({error:'Email already in use'});
  try {const user=await db.user.create({data:{name:input.data.name,email,passwordHash:await argon2.hash(input.data.password),role:input.data.role},select:{id:true,name:true,email:true,role:true,createdAt:true}});res.status(201).json(user)} catch(e){if(typeof e==='object'&&e!==null&&'code' in e&&e.code==='P2002')return res.status(409).json({error:'Email already in use'});throw e}
+});
+const passwordChangeLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false});
+app.post('/api/v1/auth/password',auth,passwordChangeLimiter,async(req:AuthRequest,res,next)=>{
+ try{
+  const input=z.object({currentPassword:z.string().min(1).max(128),newPassword:z.string().min(12).max(128)}).strict().safeParse(req.body);
+  if(!input.success)return res.status(400).json({error:'Enter your current password and a new password of 12 to 128 characters.'});
+  const user=await db.user.findUnique({where:{id:req.auth!.sub}});
+  if(!user||!await argon2.verify(user.passwordHash,input.data.currentPassword))return res.status(403).json({error:'Current password is incorrect.'});
+  const passwordHash=await argon2.hash(input.data.newPassword);
+  const updated=await db.$transaction(async tx=>{
+   const result=await tx.user.updateMany({where:{id:user.id,passwordHash:user.passwordHash,enabled:true},data:{passwordHash}});
+   if(result.count)await tx.session.deleteMany({where:{userId:user.id,id:{not:req.auth!.sessionId}}});
+   return result.count;
+  });
+  if(!updated)return res.status(409).json({error:'Account changed. Please sign in again.'});
+  res.json({ok:true});
+ }catch(e){next(e)}
+});
+app.patch('/api/v1/users/:id',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(req:AuthRequest,res,next)=>{
+ try{
+  const input=z.object({name:z.string().trim().min(2).max(120),email:z.string().trim().email().max(254),role:z.nativeEnum(Role),enabled:z.boolean(),password:z.string().min(12).max(128).optional()}).strict().safeParse(req.body);
+  if(!input.success)return res.status(400).json({error:'Check the account details and password length.'});
+  if(req.params.id===req.auth!.sub)return res.status(403).json({error:'Use Change password for your own account. Another administrator must edit your access.'});
+  const passwordHash=input.data.password?await argon2.hash(input.data.password):undefined;
+  const result=await db.$transaction(async tx=>{
+   await tx.$executeRaw`SELECT pg_advisory_xact_lock(87341298)`;
+   const actor=await tx.user.findUnique({where:{id:req.auth!.sub}});
+   const target=await tx.user.findUnique({where:{id:req.params.id}});
+   if(!actor?.enabled||actor.role!==Role.ADMIN&&actor.role!==Role.SUPER_ADMIN)return 'forbidden';
+   if(!target)return 'missing';
+   if(actor.role!==Role.SUPER_ADMIN&&(target.role===Role.SUPER_ADMIN||input.data.role===Role.SUPER_ADMIN))return 'forbidden';
+   if(target.role===Role.SUPER_ADMIN&&target.enabled&&(!input.data.enabled||input.data.role!==Role.SUPER_ADMIN)){
+    if(await tx.user.count({where:{role:Role.SUPER_ADMIN,enabled:true}})<=1)return 'last-super-admin';
+   }
+   await tx.user.update({where:{id:target.id},data:{name:input.data.name,email:input.data.email.toLowerCase(),role:input.data.role,enabled:input.data.enabled,...(passwordHash?{passwordHash}:{})}});
+   if(!input.data.enabled||passwordHash)await tx.session.deleteMany({where:{userId:target.id}});
+   return 'ok';
+  });
+  if(result==='missing')return res.status(404).json({error:'Team member not found.'});
+  if(result==='forbidden')return res.status(403).json({error:'You cannot manage this account.'});
+  if(result==='last-super-admin')return res.status(409).json({error:'At least one active super administrator is required.'});
+  res.json({ok:true});
+ }catch(e){if(typeof e==='object'&&e!==null&&'code' in e&&e.code==='P2002')return res.status(409).json({error:'Email already in use'});next(e)}
 });
 app.get('/api/v1/dashboard',auth,async(req:AuthRequest,res)=>{
  const where=req.auth!.role===Role.SALES_EXECUTIVE?{assignedToId:req.auth!.sub}:{};

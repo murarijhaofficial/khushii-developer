@@ -14,3 +14,4 @@
 
 /* Keep the navigation within the viewport and recent leads within the dashboard card. */
 .app>aside{position:sticky;top:0;height:100vh;min-height:0;align-self:flex-start;overflow-y:auto}.app>.main{min-width:0}.recent-leads .table-scroll{max-height:440px;overflow:auto;overscroll-behavior:contain}.recent-leads .lead-table thead th{position:sticky;top:0;z-index:1}
+.team-form-title{grid-column:1/-1;margin:12px 0 0}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
