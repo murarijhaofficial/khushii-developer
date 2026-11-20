@@ -258,3 +258,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Added searchable booking lead picker by name/phone/email and optional manager-controlled selling-agent attribution and correction. Previously created bookings remain unassigned; active sales/admin role is enforced by the API.
 - Isolated Neon HTTP tests for persistence, invalid agent, updates and viewer denial passed; temporary schema removed. Migration `20261120050000_booking_agent` applied and verified in CRM Neon. API compile, frontend typecheck/direct Vite build and lead-search test passed. `pnpm build` failed registry signature fetch verification; no lint script configured.
 - Remaining: deploy API/frontend and verify the search and booking flow in the hosted browser.
+
+## Plot hover and booking shortcut (2026-11-20)
+- Status: IMPLEMENTED locally; hosted deployment and browser verification pending.
+- Added plot details on hover/focus and an available-plot booking dialog defaulting to the signed-in agent. Executives can book their assigned leads as themselves; managers retain booking administration. No schema or production data changes.
+- API compile/mocked tests, web typecheck/direct Vite build, search test and isolated Neon authorization/booking tests passed; temporary schema removed. `pnpm build` failed registry signature verification after fetch failure. No lint script configured.
+- Remaining: deploy and verify hover, keyboard, touch and bookings with authorized accounts in the hosted browser.

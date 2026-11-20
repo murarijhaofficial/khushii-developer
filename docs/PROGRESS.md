@@ -183,3 +183,9 @@
 - Applied `20261120050000_booking_agent` to configured Neon and verified its migration record. Isolated Neon HTTP tests with fictional data covered agent persistence, invalid role, agent update and viewer denial; temporary schema removed. No production bookings were changed.
 - Verification: API compile, frontend typecheck/direct Vite build, lead-search unit test and isolated HTTP tests passed. `pnpm build` failed because pnpm registry signature verification could not fetch the pinned release. No lint script configured; hosted UI not browser-tested.
 - Remaining: deploy API/frontend, test search and agent assignment in the hosted browser, and verify actual data with authorized users.
+
+## Plot hover and booking shortcut (2026-11-20)
+- Status: IMPLEMENTED locally; hosted deployment and browser verification pending.
+- Added plot detail previews on hover/focus for mapped layouts and the grid; selecting an available plot opens a booking dialog with the current user selected as agent. Managers can change the agent. Sales executives may book only assigned leads and are enforced as the agent on the API; viewers cannot book. Existing booking management/history remains manager-only.
+- Verification: API compilation and mocked HTTP tests, frontend typecheck/direct Vite build and lead-search test passed. Isolated Neon HTTP tests covered assigned-lead ownership, self-agent attribution, viewer denial and booking conflict; temporary schema removed. `pnpm build` failed because registry signature verification could not fetch the pinned pnpm release; no lint script configured. No browser interaction or live booking was tested.
+- No schema migration or production data changes. Remaining: deploy API/frontend and verify hover, keyboard, touch and booking workflow with authorized accounts in a browser.

@@ -27,6 +27,6 @@ test('project endpoints enforce role checks, input validation and public plot pr
   assert.equal((await fetch(base+'/projects/'+id+'/plots',{method:'POST',headers:{'content-type':'application/json','x-test-role':'VIEWER'},body:JSON.stringify(detailBody)})).status,403);
   const plots=await fetch(base+'/projects/'+id+'/plots',{headers:{'x-test-role':'VIEWER'}});assert.equal(plots.status,200);assert.deepEqual(await plots.json(),[{id,label:'A1',row:1,column:1,area:null,status:'BOOKED'}]);for(const field of ['areaSqFeet','north','south','east','west'])assert.equal(plotSelection[field],true);
   assert.equal((await fetch(base+'/plots/'+id+'/bookings',{headers:{'x-test-role':'VIEWER'}})).status,403);
-  assert.equal((await fetch(base+'/plots/'+id+'/bookings',{method:'POST',headers:{'content-type':'application/json','x-test-role':'SALES_EXECUTIVE'},body:JSON.stringify({leadId:id,status:'BOOKED'})})).status,403);
+  assert.equal((await fetch(base+'/plots/'+id+'/bookings',{method:'POST',headers:{'content-type':'application/json','x-test-role':'VIEWER'},body:JSON.stringify({leadId:id,status:'BOOKED'})})).status,403);
  }finally{await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()))}
 });

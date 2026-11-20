@@ -163,7 +163,8 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     const detailsResponse=await fetch(plotsPath,{headers:viewer});assert.equal(detailsResponse.status,200);const details=await detailsResponse.json() as {areaSqFeet:string;north:string;south:string;east:string;west:string}[];assert.deepEqual([details[0].areaSqFeet,details[0].north,details[0].south,details[0].east,details[0].west],['1080 sq ft','Internal road','Survey number','Plot A2','Plot A3']);
     const bookingPath=base+'/plots/'+plotId+'/bookings';
     assert.equal((await fetch(bookingPath,{headers:viewer})).status,403);
-    assert.equal((await fetch(bookingPath,{method:'POST',headers:own,body:JSON.stringify({leadId:imported!.id,status:'RESERVED'})})).status,403);
+    assert.equal((await fetch(bookingPath,{method:'POST',headers:other,body:JSON.stringify({leadId:imported!.id,status:'RESERVED'})})).status,404);
+    assert.equal((await fetch(bookingPath,{method:'POST',headers:viewer,body:JSON.stringify({leadId:imported!.id,status:'RESERVED'})})).status,403);
     assert.equal((await fetch(bookingPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({leadId:imported!.id,agentId:staff[2].id,status:'RESERVED'})})).status,400);
     const attempts=await Promise.all([1,2].map(()=>fetch(bookingPath,{method:'POST',headers:syncHeaders,body:JSON.stringify({leadId:imported!.id,agentId:staff[0].id,status:'RESERVED'})})));assert.deepEqual(attempts.map(r=>r.status).sort(),[201,409]);
     const publicPlots=await (await fetch(plotsPath,{headers:viewer})).json() as {status:string;leadId?:string}[];assert.equal(publicPlots[0].status,'RESERVED');assert.equal(publicPlots[0].leadId,undefined);
@@ -174,6 +175,9 @@ test('sessions, website forms and signed ingestion enforce access and idempotenc
     assert.equal((await fetch(bookingPath+'/'+history[0].id,{method:'PATCH',headers:syncHeaders,body:JSON.stringify({status:'BOOKED'})})).status,200);
     assert.equal((await fetch(bookingPath+'/'+history[0].id,{method:'PATCH',headers:syncHeaders,body:JSON.stringify({status:'CANCELLED'})})).status,200);
     assert.equal((await db.plot.findUniqueOrThrow({where:{id:plotId}})).status,'AVAILABLE');
+    assert.equal((await fetch(bookingPath,{method:'POST',headers:own,body:JSON.stringify({leadId:imported!.id,agentId:staff[1].id,status:'RESERVED'})})).status,403);
+    assert.equal((await fetch(bookingPath,{method:'POST',headers:own,body:JSON.stringify({leadId:imported!.id,status:'RESERVED'})})).status,201);
+    const ownedBooking=await db.plotBooking.findFirstOrThrow({where:{plotId,status:'RESERVED'}});assert.equal(ownedBooking.agentId,staff[0].id);
     // Team account controls and self-service password changes.
     const patchUser=(id:string,headers:Record<string,string>,body:object)=>fetch(base+'/users/'+id,{method:'PATCH',headers,body:JSON.stringify(body)});
     const adminHeaders=await staffSession(staff[3].email);
