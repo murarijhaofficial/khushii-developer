@@ -14,6 +14,7 @@ import {fetchNestoriaBatch,WebsiteSyncError} from './nestoria-sync.js';
 import {phoneSchema,saveEnquiry} from './enquiries.js';
 import {registerCampaigns,processCampaigns} from './campaigns.js';
 import {registerProjects} from './projects.js';
+import {registerBookingOverview} from './booking-overview.js';
 
 const db = new PrismaClient();
 const app = express();
@@ -149,6 +150,7 @@ app.patch('/api/v1/leads/:id/assignment',auth,requireRole(...leadManagers),async
 });
 registerLeadWorkspace(app,db,auth,requireRole);
 registerProjects(app,db,auth,requireRole);
+registerBookingOverview(app,db,auth);
 registerCampaigns(app,db,auth,requireRole);
 app.get('/api/v1/integrations/website-status',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(_req,res,next)=>{try{const where={OR:[{externalId:{startsWith:'website:nestoria:'}},{externalId:{startsWith:'website:khep:'}}]};const [total,last]=await Promise.all([db.leadEnquiry.count({where}),db.leadEnquiry.findFirst({where,orderBy:{createdAt:'desc'},select:{createdAt:true}})]);res.json({total,lastReceivedAt:last?.createdAt??null,websiteUrl:process.env.WORDPRESS_SITE_URL||'https://khushiideveloper.com'})}catch(e){next(e)}});
 app.post('/api/v1/integrations/nestoria/sync',auth,requireRole(Role.SUPER_ADMIN,Role.ADMIN),async(req,res,next)=>{try{

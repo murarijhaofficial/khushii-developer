@@ -196,3 +196,9 @@
 - Guarded booking responses when switching selected plots, and avoided requesting manager-only booking history after a sales executive creates a booking. No API, database, role or migration changes.
 - Verification: project-directory and lead-search tests, frontend TypeScript check and direct Vite production build passed. `pnpm build` stalled at the launcher and was cancelled; no lint script is configured. Browser interactions and hosted deployment remain unverified.
 - Remaining: deploy frontend and verify multiple projects, navigation and booking flows with authorized accounts on desktop and mobile.
+
+## Bookings navigation (2026-11-21)
+- Status: IMPLEMENTED locally; hosted deployment and browser verification pending.
+- Added a Bookings sidebar page with project-level available/reserved/booked counts, project and booking filters, links to project layouts and individual plots, and active booking details scoped by role. Managers see all active bookings, sales executives see their own, and other roles see availability only. The latest 200 booking limit is disclosed in the UI. No schema changes or production booking changes.
+- Verification: API compilation, mocked HTTP role/privacy tests, frontend typecheck, direct Vite build and frontend regression tests passed. Isolated Neon HTTP tests with fictional data verified project counts and manager/executive/viewer scope; temporary schema removed. `pnpm build` stalled at the launcher and was cancelled; no lint script configured. Hosted browser behavior remains unverified.
+- Remaining: deploy API and frontend, verify navigation and availability with authorized users, and add server-side pagination if booking volumes exceed the overview limit.

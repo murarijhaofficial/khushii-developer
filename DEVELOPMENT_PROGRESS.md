@@ -270,3 +270,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Projects now opens a searchable, status-filtered directory, with a separate workspace for each project's details, layout, plots and bookings. Returning to the directory closes the workspace. Guarded selected-plot booking responses and fixed a sales-executive post-booking refresh permission error. No database or API changes.
 - Project-directory and lead-search tests, frontend typecheck and direct Vite build passed; `pnpm build` stalled and was cancelled. No lint script configured.
 - Remaining: deploy and verify navigation and booking behavior across multiple projects on desktop and mobile.
+
+## Bookings navigation (2026-11-21)
+- Status: IMPLEMENTED locally; deployment and browser verification pending.
+- Added a separate Bookings page with project availability, active booking list, filters and direct links to each project or plot. Booking details are restricted to managers or the executive's own bookings; other users see availability only. UI indicates the latest-200 limit. No schema changes.
+- API compilation and mocked role tests, web typecheck/direct Vite build, frontend regression tests and isolated Neon HTTP tests for counts and permissions passed; temporary schema removed. `pnpm build` stalled and was cancelled; no lint script configured.
+- Remaining: deploy API/frontend, verify browser navigation with authorized accounts and add server-side pagination for larger booking volumes.
