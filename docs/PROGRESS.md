@@ -189,3 +189,10 @@
 - Added plot detail previews on hover/focus for mapped layouts and the grid; selecting an available plot opens a booking dialog with the current user selected as agent. Managers can change the agent. Sales executives may book only assigned leads and are enforced as the agent on the API; viewers cannot book. Existing booking management/history remains manager-only.
 - Verification: API compilation and mocked HTTP tests, frontend typecheck/direct Vite build and lead-search test passed. Isolated Neon HTTP tests covered assigned-lead ownership, self-agent attribution, viewer denial and booking conflict; temporary schema removed. `pnpm build` failed because registry signature verification could not fetch the pinned pnpm release; no lint script configured. No browser interaction or live booking was tested.
 - No schema migration or production data changes. Remaining: deploy API/frontend and verify hover, keyboard, touch and booking workflow with authorized accounts in a browser.
+
+## Multi-project navigation (2026-11-21)
+- Status: IMPLEMENTED locally; hosted deployment and browser verification pending.
+- Replaced automatic first-project selection with a searchable and status-filtered directory. Creating a project opens its own workspace; each workspace contains that project's details, layout, plots and booking controls, with a return link to the directory. Separate workspaces are mounted per project to prevent state carrying over.
+- Guarded booking responses when switching selected plots, and avoided requesting manager-only booking history after a sales executive creates a booking. No API, database, role or migration changes.
+- Verification: project-directory and lead-search tests, frontend TypeScript check and direct Vite production build passed. `pnpm build` stalled at the launcher and was cancelled; no lint script is configured. Browser interactions and hosted deployment remain unverified.
+- Remaining: deploy frontend and verify multiple projects, navigation and booking flows with authorized accounts on desktop and mobile.

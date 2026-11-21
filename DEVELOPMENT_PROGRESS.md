@@ -264,3 +264,9 @@ Statuses: NOT STARTED, IN PROGRESS, BLOCKED, IMPLEMENTED ? UNVERIFIED, TESTED, C
 - Added plot details on hover/focus and an available-plot booking dialog defaulting to the signed-in agent. Executives can book their assigned leads as themselves; managers retain booking administration. No schema or production data changes.
 - API compile/mocked tests, web typecheck/direct Vite build, search test and isolated Neon authorization/booking tests passed; temporary schema removed. `pnpm build` failed registry signature verification after fetch failure. No lint script configured.
 - Remaining: deploy and verify hover, keyboard, touch and bookings with authorized accounts in the hosted browser.
+
+## Multi-project navigation (2026-11-21)
+- Status: IMPLEMENTED locally; hosted deployment and browser verification pending.
+- Projects now opens a searchable, status-filtered directory, with a separate workspace for each project's details, layout, plots and bookings. Returning to the directory closes the workspace. Guarded selected-plot booking responses and fixed a sales-executive post-booking refresh permission error. No database or API changes.
+- Project-directory and lead-search tests, frontend typecheck and direct Vite build passed; `pnpm build` stalled and was cancelled. No lint script configured.
+- Remaining: deploy and verify navigation and booking behavior across multiple projects on desktop and mobile.

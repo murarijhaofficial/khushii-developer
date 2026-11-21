@@ -5,7 +5,7 @@ import './style.css';
 import {LeadWorkspace,ReminderCenter} from './LeadWorkspace';
 import {Templates} from './Templates';
 import {Campaigns} from './Campaigns';
-import {Projects} from './Projects';
+import {Projects} from './ProjectsDirectory';
 import {ChangePassword,TeamMembers} from './Team';
 import {resolveApiBase} from './api-config';
 import {parseEnquiryDetails,safeSourceUrl,formatBudget,formatVisitDate} from './enquiry-details';
